@@ -15,8 +15,15 @@ class Settings(BaseSettings):
     PORT: int
     ENVIRONMENT: str
     
-    PDF_STORAGE_PATH: str = "storage/pdfs"
-    TEMP_STORAGE_PATH: str = "storage/temp"
+    # Get base directory
+    BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    # Update paths to be absolute
+    FONTS_PATH: str = os.path.join(BASE_DIR, "app/fonts")
+    PDF_STORAGE_PATH: str = os.path.join(BASE_DIR, "storage/pdfs")
+    TEMP_STORAGE_PATH: str = os.path.join(BASE_DIR, "storage/temp")
+    CONTRIBUTIONS_STORAGE_PATH: str = os.path.join(BASE_DIR, "storage/contributions")
+    DATA_STORAGE_PATH: str = os.path.join(BASE_DIR, "storage/data")
 
     # Cache settings
     CACHE_TTL: int = 3600  # 1 hour
@@ -112,6 +119,10 @@ class Settings(BaseSettings):
     
     # Update these specific settings
     API_URL: str = "http://localhost:8000"
+    
+    # Storage paths
+    STORAGE_PATH: str = "storage"  # This should point to your storage directory
+    DATA_STORAGE_PATH: str = "storage/data"
     
     class Config:
         env_file = ".env"

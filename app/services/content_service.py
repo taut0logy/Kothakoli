@@ -17,6 +17,7 @@ class ContentService:
         content_type: str,
         title: str,
         content: str,
+        is_public: bool = True,
         prompt: Optional[str] = None,
         filename: Optional[str] = None,
         file_url: Optional[str] = None,
@@ -31,6 +32,7 @@ class ContentService:
                         "type": content_type,
                         "title": title,
                         "prompt": prompt,
+                        "isPublic": is_public,
                         "content": content,
                         "filename": filename,
                         "fileUrl": file_url,
@@ -47,7 +49,8 @@ class ContentService:
         user_id: str,
         content_type: Optional[str] = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        isPublic: Optional[bool] = None
     ) -> List[Dict]:
         """Get user's generated content with optional filtering by type."""
         try:
@@ -55,6 +58,9 @@ class ContentService:
                 where = {"userId": user_id}
                 if content_type:
                     where["type"] = content_type
+                if isPublic:
+                    where["isPublic"] = isPublic
+
 
                 contents = await client.generatedcontent.find_many(
                     where=where,
@@ -67,14 +73,35 @@ class ContentService:
             logger.error(f"Error fetching content: {str(e)}")
             raise
 
-    async def get_content_by_id(self, content_id: str) -> Optional[Dict]:
+    async def get_content_by_id(self, content_id: str, isPublic: Optional[bool] = None) -> Optional[Dict]:
         """Get specific content by ID."""
         try:
             async with db.get_client() as client:
+                where = {"id": content_id}
+                if isPublic:
+                    where["isPublic"] = isPublic
                 content = await client.generatedcontent.find_unique(
-                    where={"id": content_id}
+                    where=where
                 )
                 return content
+        except Exception as e:
+            logger.error(f"Error fetching content: {str(e)}")
+            raise
+
+    async def get_content_by_type(self, content_type: str, limit: int = 50, offset: int = 0, isPublic: Optional[bool] = None) -> List[Dict]:
+        """Get content by type with optional filtering by public."""
+        try:
+            async with db.get_client() as client:
+                where = {"type": content_type}
+                if isPublic:
+                    where["isPublic"] = isPublic
+                contents = await client.generatedcontent.find_many(
+                    where=where,
+                    order={"createdAt": "desc"},
+                    skip=offset,
+                    take=limit
+                )
+                return contents
         except Exception as e:
             logger.error(f"Error fetching content: {str(e)}")
             raise

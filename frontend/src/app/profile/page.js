@@ -1,211 +1,167 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/auth-context';
-import { toast } from 'sonner';
+import { useEffect } from 'react'
+import { useAuth } from '@/contexts/auth-context'
+import { useUser } from '@/hooks/use-user'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import * as z from 'zod'
+import { toast } from 'sonner'
+import { AVAILABLE_MODELS } from '@/config/models'
+
+const formSchema = z.object({
+  name: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
+  }),
+  apiKey: z.string().optional(),
+  modelName: z.enum(AVAILABLE_MODELS),
+})
 
 export default function ProfilePage() {
-  const { user, updateProfile, deleteAccount } = useAuth();
-  const [formData, setFormData] = useState({
-    name: '',
-    password: '',
-    confirmPassword: '',
-    api_key: '',
-    model_name: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { user, mutate } = useUser()
+  const { updateProfile } = useAuth()
+
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      apiKey: '',
+      modelName: AVAILABLE_MODELS[0],
+    },
+  })
 
   useEffect(() => {
     if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        name: user.name || '',
-        model_name: user.model_name || '',
-      }));
+      form.reset({
+        name: user.name,
+        apiKey: user.apiKey || '',
+        modelName: user.modelName || AVAILABLE_MODELS[0],
+      })
     }
-  }, [user]);
+  }, [user, form])
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const onSubmit = async (data) => {
     try {
-      if (formData.password && formData.password !== formData.confirmPassword) {
-        throw new Error('Passwords do not match');
-      }
-
-      const updateData = {
-        name: formData.name,
-        model_name: formData.model_name,
-      };
-
-      if (formData.password) {
-        updateData.password = formData.password;
-      }
-
-      if (formData.api_key) {
-        updateData.api_key = formData.api_key;
-      }
-
-      await updateProfile(updateData);
-      setFormData((prev) => ({
-        ...prev,
-        password: '',
-        confirmPassword: '',
-      }));
+      await updateProfile(data)
+      mutate() // Refresh user data
+      toast.success('Profile updated successfully')
     } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
+      toast.error('Failed to update profile')
     }
-  };
+  }
 
-  const handleDeleteAccount = async () => {
-    try {
-      await deleteAccount();
-    } catch (error) {
-      toast.error(error.message);
-    }
-  };
+  if (!user) {
+    return null
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-8">
-          Profile Settings
-        </h2>
+    <div className="max-w-2xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile Settings</CardTitle>
+          <CardDescription>
+            Update your profile information and preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Full Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
+              <FormField
+                control={form.control}
+                name="apiKey"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gemini API Key</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Enter your API key"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Your Gemini API key for accessing AI models
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div>
-            <label htmlFor="api_key" className="block text-sm font-medium text-gray-700">
-              Gemini API Key
-            </label>
-            <input
-              type="password"
-              id="api_key"
-              name="api_key"
-              value={formData.api_key}
-              onChange={handleChange}
-              placeholder={user?.has_api_key ? '••••••••' : 'Enter your API key'}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
+              <FormField
+                control={form.control}
+                name="modelName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preferred Model</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a model" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {AVAILABLE_MODELS.map((model) => (
+                          <SelectItem key={model} value={model}>
+                            {model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Choose your preferred AI model for conversations
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div>
-            <label htmlFor="model_name" className="block text-sm font-medium text-gray-700">
-              Preferred Model
-            </label>
-            <select
-              id="model_name"
-              name="model_name"
-              value={formData.model_name}
-              onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option value="gemini-pro">Gemini Pro</option>
-              <option value="gemini-pro-vision">Gemini Pro Vision</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              New Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-              Confirm New Password
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div className="flex justify-between">
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              Delete Account
-            </button>
-          </div>
-        </form>
-
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Delete Account
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Are you sure you want to delete your account? This action cannot be undone.
-              </p>
-              <div className="flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteAccount}
-                  className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+              <Button type="submit">Save Changes</Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 } 

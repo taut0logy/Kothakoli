@@ -50,7 +50,7 @@ export default function ContentHistory({ contents, onDelete }) {
       let filename;
       let contentType;
 
-      if (content.type === "PDF") {
+      if (content.type === "PDF" || content.type === "BENGALI_STORY") {
         // For PDF type, download the actual PDF file
         const response = await api.downloadPdf(content.filename);
         blob = new Blob([response], { type: "application/pdf" });

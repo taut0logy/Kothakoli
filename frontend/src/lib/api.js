@@ -22,6 +22,27 @@ export const api = {
     return data // Return the actual response data
   },
 
+  async sendChatbotMessage(message, modelName = null) {
+    const response = await fetch(`${API_BASE_URL}/api/chatbot/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ 
+        message,
+        model_name: modelName 
+      }),
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to send message')
+    }
+    const data = await response.json()
+    return data // Return the actual response data
+  },
+
+  // Voice endpoints
   async sendVoice(audioBlob, modelName = null) {
     const formData = new FormData()
     formData.append('audio', audioBlob, 'audio.webm')
@@ -106,7 +127,7 @@ export const api = {
   },
 
   // PDF endpoints
-  async generateStory(prompt, modelName = null) {
+  async generateStory(prompt, modelName = null, isPublic = true) {
     const response = await fetch(`${API_BASE_URL}/api/pdf/generate-story`, {
       method: 'POST',
       headers: {
@@ -115,7 +136,8 @@ export const api = {
       },
       body: JSON.stringify({
         prompt,
-        model_name: modelName
+        model_name: modelName,
+        is_public: isPublic
       })
     })
     if (!response.ok) {
@@ -151,20 +173,32 @@ export const api = {
     return response.json()
   },
 
-  async generateCustomPDF(prompt, templateType) {
+  async generateCustomPDF({ content, title, caption, isPublic = true, fontName = "Kalpurush" }) {
     const response = await fetch(`${API_BASE_URL}/api/pdf/generate-custom`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },
-      body: JSON.stringify({ prompt, template_type: templateType }),
-    })
+      body: JSON.stringify({
+        content,
+        title,
+        caption,
+        is_public: isPublic,
+        font_name: fontName
+      }),
+    });
+    
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || 'Failed to generate custom PDF')
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to generate PDF');
     }
-    return response.json()
+    
+    const result = await response.json();
+    return {
+      success: result.success,
+      data: result.data
+    };
   },
 
   async verifyEmail(token) {
@@ -410,6 +444,75 @@ export const api = {
     } catch (error) {
       console.error('Error caching conversation:', error);
       throw error;
+    }
+  }
+
+  async convertToBengali(text) {
+    const response = await fetch(`${API_BASE_URL}/api/convert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ text }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to convert text');
+    }
+    
+    return response.json();
+  },
+
+  async generateTitleCaption(text) {
+    const response = await fetch(`${API_BASE_URL}/api/convert/generate-title-caption`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ text }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to generate title and caption');
+    }
+    
+    return response.json();
+  },
+
+  async checkBanglishSpelling(text) {
+    try {
+      if (!localStorage.getItem('token')) {
+        console.warn('No auth token found');
+        return { status: "error", suggestions: [] };
+      }
+
+      // Encode the text properly for URL
+      const encodedText = encodeURIComponent(text);
+      const url = `${API_BASE_URL}/api/chatbot/check-spelling?message=${encodedText}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('Spelling check failed:', response.status);
+        return { status: "error", suggestions: [] };
+      }
+      
+      const data = await response.json();
+      console.log('Spell check response:', data); // Debug log
+      return data;
+    } catch (error) {
+      console.error('Error checking spelling:', error);
+      return { status: "error", suggestions: [] };
     }
   }
 } 
