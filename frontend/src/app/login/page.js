@@ -1,49 +1,45 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
-import { toast } from "sonner"
-import { api } from "@/lib/api"
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from '@/contexts/auth-context';
+import { FormError } from '@/components/ui/form-error';
+import { useFormError } from '@/hooks/use-form-error';
 
 export default function Login() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const { login, loading } = useAuth();
+  const { serverError, handleError, setServerError } = useFormError();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
-  })
+  });
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setServerError('');
 
     try {
-      const response = await api.login(formData)
-      
-      if (response.success) {
-        toast.success("Login successful")
-        router.push('/dashboard') // or wherever you want to redirect after login
-      }
+      await login(formData);
+      toast.success("Login successful");
+      router.push('/dashboard');
     } catch (error) {
-      toast.error("Login failed", {
-        description: error.message || "Please check your credentials and try again"
-      })
-    } finally {
-      setIsLoading(false)
+      handleError(error);
     }
-  }
+  };
 
   return (
     <div className="container mx-auto p-4 pt-6">
@@ -53,7 +49,8 @@ export default function Login() {
             <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
+            <FormError error={serverError} />
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium">
                   Email
@@ -66,7 +63,7 @@ export default function Login() {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  disabled={isLoading}
+                  disabled={loading}
                 />
               </div>
 
@@ -82,16 +79,16 @@ export default function Login() {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
-                  disabled={isLoading}
+                  disabled={loading}
                 />
               </div>
 
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isLoading}
+                disabled={loading}
               >
-                {isLoading ? (
+                {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Logging in...
@@ -126,5 +123,5 @@ export default function Login() {
         </Card>
       </div>
     </div>
-  )
-}
+  );
+} 

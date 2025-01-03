@@ -1,5 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { SWRConfig } from 'swr';
 import "./globals.css";
+import { AuthProvider } from '@/contexts/auth-context';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,7 +24,16 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <SWRConfig 
+          value={{
+            revalidateOnFocus: false,
+            shouldRetryOnError: false
+          }}
+        >
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </SWRConfig>
       </body>
     </html>
   );

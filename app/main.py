@@ -1,9 +1,10 @@
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+from .api import auth
 from .core.config import settings
+
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +30,10 @@ app.add_middleware(
 )
 
 
+# Include routers with /api prefix
+app.include_router(auth.router, prefix=settings.API_PREFIX)
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unhandled exceptions."""
@@ -44,3 +49,22 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "version": settings.APP_VERSION} 
+
+@app.get("/debug/headers")
+async def debug_headers(request: Request):
+    """Debug endpoint to check request headers."""
+    return {
+        "headers": dict(request.headers),
+        "client": request.client.host,
+        "method": request.method,
+    }
+
+@app.get("/api/test")
+async def test_endpoint():
+    """Test endpoint to verify API connectivity."""
+    return JSONResponse(
+        content={
+            "status": "ok",
+            "message": "API is working correctly"
+        }
+    )
