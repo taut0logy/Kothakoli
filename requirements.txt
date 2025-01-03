@@ -1,0 +1,53 @@
+# FastAPI and server
+fastapi
+uvicorn
+python-multipart
+pydantic
+pydantic-settings
+python-dotenv
+
+# Authentication and security
+passlib
+bcrypt
+cryptography
+python-jose[cryptography]
+jwt
+
+
+# Database
+prisma
+motor
+
+# Caching and rate limiting
+redis
+redis-om
+aioredis
+
+# AI and ML
+google-generativeai
+SpeechRecognition
+pillow
+numpy
+pydub
+pytesseract==0.3.10
+gTTS
+
+# PDF generation
+reportlab
+pypdf2
+
+# PDF processing
+pdf2image
+poppler-utils  # Required for pdf2image
+
+# Utilities
+python-slugify
+python-magic
+aiofiles
+requests
+pydantic[email]
+
+# Testing
+pytest
+pytest-asyncio
+httpx

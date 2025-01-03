@@ -1,0 +1,9 @@
+storage/
+.env
+__pycache__/
+.DS_Store
+.vscode
+.venv/
+env/
+node_modules/
+package-lock.json
