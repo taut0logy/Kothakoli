@@ -87,6 +87,7 @@ model File {
 model GeneratedContent {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
   type        ContentType
+  isPublic    Boolean     @default(true)
   title       String
   isPublic    Boolean?     @default(true)
   filename    String?
