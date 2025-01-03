@@ -22,7 +22,7 @@ export function Header() {
         <div className="mr-4 flex justify-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <span className="font-bold sm:inline-block">
-              StoryGen AI
+              Kothakoli
             </span>
           </Link>
         </div>

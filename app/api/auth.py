@@ -8,7 +8,6 @@ from ..core.config import settings
 import logging
 from datetime import datetime
 from ..services.email_service import email_service
-from ..services.otp_service import otp_service
 from ..core.security import get_password_hash
 from ..models.auth import (
     VerifyEmailRequest,
@@ -91,41 +90,59 @@ async def signup(user_data: UserCreate):
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Error during signup: {str(e)}")
+        error_message = str(e)
+        if "duplicate key error" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This email is already registered"
+            )
+        elif "validation failed" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid input data. Please check your email and password format"
+            )
+        elif "connection" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to connect to the database. Please try again later"
+            )
+        logger.error(f"Error during signup: {error_message}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while creating the user"
+            detail="An unexpected error occurred. Please try again later"
         )
 
 @router.post("/login")
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    json_data: LoginRequest = None
-):
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """Authenticate a user and return a JWT token."""
     try:
-        email = form_data.username if form_data else json_data.email
-        password = form_data.password if form_data else json_data.password
-
         result = await auth_service.authenticate_user(
-            email=email,
-            password=password
+            email=form_data.username,
+            password=form_data.password
         )
         
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password",
+                detail="Invalid email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
         return result
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error during login: {str(e)}")
+        error_message = str(e)
+        logger.error(f"Login error: {error_message}")
+        if "connection" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to connect to the server. Please try again later"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="An unexpected error occurred. Please try again later"
         )
 
 @router.post("/logout")
@@ -133,17 +150,19 @@ async def logout(current_user: Dict = Depends(get_current_user), token: str = De
     """Logout a user by blacklisting their token."""
     try:
         # Add token to blacklist with expiry matching token expiry
-        token_exp = auth_service.decode_token(token).get("exp")
-        if token_exp:
-            ttl = token_exp - datetime.utcnow().timestamp()
+        payload = auth_service.decode_token(token)
+        if payload and "exp" in payload:
+            ttl = payload["exp"] - datetime.utcnow().timestamp()
             await cache_service.set(f"blacklist:{token}", "true", int(ttl))
-        return {"message": "Successfully logged out"}
+            logger.info(f"Token blacklisted for user: {current_user.get('email')}")
+            return {"message": "Successfully logged out"}
+        else:
+            logger.warning("Invalid token during logout")
+            return {"message": "Successfully logged out"}
     except Exception as e:
         logger.error(f"Error during logout: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred during logout"
-        )
+        # Still remove the token even if blacklisting fails
+        return {"message": "Successfully logged out"}
 
 @router.get("/me")
 async def get_me(current_user: Dict = Depends(get_current_user)):
@@ -256,57 +275,55 @@ async def resend_verification(request: ResendVerificationRequest):
 
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
-    """Send password reset OTP to user's email."""
+    """Send password reset token to user's email."""
     try:
-        user = await auth_service.get_user_by_email(request.email)
-        if not user:
+        # Create reset token
+        token = await auth_service.create_password_reset_token(request.email)
+        if not token:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                detail="No account found with this email address"
             )
 
-        # Generate and send OTP
-        otp = await otp_service.create_otp(user.email, 'password_reset')
-        await email_service.send_password_reset_email(user.email, otp)
-        return {"message": "Password reset email sent"}
+        # Send reset email
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        email_service.send_password_reset_email(request.email, reset_link)
+        
+        return {
+            "message": "Password reset instructions have been sent to your email",
+            "email": request.email
+        }
     except Exception as e:
+        logger.error(f"Failed to process forgot password request: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Failed to process password reset request"
         )
 
 @router.post("/reset-password")
 async def reset_password(request: ResetPasswordRequest):
-    """Reset user's password using OTP."""
+    """Reset user's password using the reset token."""
     try:
-        user = await auth_service.get_user_by_email(request.email)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-
-        # Verify OTP
-        is_valid = await otp_service.verify_otp(
-            request.email,
-            request.otp,
-            'password_reset'
+        success = await auth_service.reset_password(
+            token=request.token,
+            new_password=request.new_password
         )
-        if not is_valid:
+        
+        if not success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired OTP"
+                detail="Invalid or expired reset token"
             )
-
-        # Update password
-        hashed_password = get_password_hash(request.password)
-        await auth_service.update_user(user.id, {"password": hashed_password})
-
-        # Invalidate OTP
-        await otp_service.invalidate_otp(request.email, 'password_reset')
-        return {"message": "Password reset successfully"}
+            
+        return {"message": "Password has been reset successfully"}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
+        logger.error(f"Failed to reset password: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Failed to reset password"
         ) 

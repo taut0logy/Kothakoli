@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import api from '@/lib/api';
+import {api} from '@/lib/api';
 
 export default function VerifyEmail() {
   const [status, setStatus] = useState('verifying');

@@ -58,18 +58,6 @@ class EmailService:
             algorithm=settings.JWT_ALGORITHM
         )
 
-    def _generate_reset_token(self, email: str, otp: str, expiration_minutes: int = 60) -> str:
-        expiration = datetime.utcnow() + timedelta(minutes=expiration_minutes)
-        return jwt.encode(
-            {
-                'email': email,
-                'otp': otp,
-                'exp': expiration,
-                'type': 'password_reset'
-            },
-            settings.JWT_SECRET,
-            algorithm=settings.JWT_ALGORITHM
-        )
 
     def verify_token(self, token: str, token_type: str) -> Optional[dict]:
         try:
@@ -112,30 +100,33 @@ class EmailService:
             html_content=html_content
         )
 
-    def send_password_reset_email(self, email: str, otp: str):
-        token = self._generate_reset_token(email, otp)
-        reset_link = f"{self.frontend_url}/reset-password?token={token}"
-
-        html_content = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Reset Your Password</h2>
-            <p>You have requested to reset your password. Use the OTP below:</p>
-            <div style="background-color: #F3F4F6; padding: 16px; border-radius: 4px; margin: 16px 0; text-align: center;">
-                <span style="font-size: 24px; letter-spacing: 4px; font-weight: bold;">{otp}</span>
+    def send_password_reset_email(self, email: str, reset_link: str):
+        """Send password reset email with reset link."""
+        try:
+            subject = "Reset Your Password"
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Password Reset Request</h2>
+                <p>You have requested to reset your password. Click the button below to set a new password:</p>
+                <a href="{reset_link}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 16px 0;">
+                    Reset Password
+                </a>
+                <p>Or copy and paste this link in your browser:</p>
+                <p style="color: #4F46E5;">{reset_link}</p>
+                <p>This link will expire in 15 minutes.</p>
+                <p>If you didn't request this, you can safely ignore this email.</p>
+                <p>Best regards,<br>{self.app_name} Team</p>
             </div>
-            <p>Or click the button below to reset your password:</p>
-            <a href="{reset_link}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 16px 0;">
-                Reset Password
-            </a>
-            <p>This OTP and link will expire in 60 minutes.</p>
-            <p>If you didn't request a password reset, please ignore this email.</p>
-        </div>
-        """
-
-        self._send_email(
-            to_email=email,
-            subject=f"Reset your password - {self.app_name}",
-            html_content=html_content
-        )
+            """
+            
+            self._send_email(
+                to_email=email,
+                subject=f"Reset your password - {self.app_name}",
+                html_content=html_content
+            )
+            logger.info(f"Password reset email sent to: {email}")
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {str(e)}")
+            raise
 
 email_service = EmailService() 

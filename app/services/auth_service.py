@@ -27,6 +27,7 @@ class AuthService:
         except JWTError as e:
             logger.error(f"JWT decoding failed: {str(e)}")
             return None
+        
 
     async def create_user(self, email: str, password: str, name: str) -> Dict:
         """Create a new user."""
@@ -67,14 +68,17 @@ class AuthService:
                 # Find user
                 user = await client.user.find_unique(where={"email": email})
                 if not user:
+                    logger.warning(f"Authentication failed: User not found for email {email}")
                     return None
 
                 # Verify password
                 if not verify_password(password, user.password):
+                    logger.warning(f"Authentication failed: Invalid password for email {email}")
                     return None
 
                 # Generate token
                 access_token = self.create_access_token(user.id)
+                logger.info(f"Generated access token for user {email}")
 
                 return {
                     "access_token": access_token,
@@ -88,7 +92,7 @@ class AuthService:
                 }
 
         except Exception as e:
-            logger.error(f"Authentication failed: {str(e)}")
+            logger.error(f"Authentication error for email {email}: {str(e)}")
             raise
 
     def create_access_token(self, user_id: str) -> str:
@@ -228,6 +232,99 @@ class AuthService:
                 return bool(user and user.emailVerified)
         except Exception as e:
             logger.error(f"Failed to check email verification: {str(e)}")
+            raise
+
+    async def create_password_reset_token(self, email: str) -> Optional[str]:
+        """Create a password reset token."""
+        try:
+            async with db.get_client() as client:
+                user = await client.user.find_unique(where={"email": email})
+                if not user:
+                    return None
+
+                # Create a token that expires in 15 minutes
+                expiration = datetime.utcnow() + timedelta(minutes=15)
+                token_data = {
+                    "sub": str(user.id),
+                    "email": email,
+                    "type": "password_reset",
+                    "exp": expiration
+                }
+                
+                token = jwt.encode(
+                    claims=token_data,
+                    key=settings.JWT_SECRET,
+                    algorithm=settings.JWT_ALGORITHM
+                )
+                
+                return token
+        except Exception as e:
+            logger.error(f"Failed to create password reset token: {str(e)}")
+            raise
+
+    async def verify_reset_token(self, token: str) -> Optional[str]:
+        """Verify a password reset token and return the user's email."""
+        try:
+            payload = jwt.decode(
+                token=token,
+                key=settings.JWT_SECRET,
+                algorithms=[settings.JWT_ALGORITHM]
+            )
+            
+            if payload.get("type") != "password_reset":
+                return None
+                
+            return payload.get("email")
+        except jwt.ExpiredSignatureError:
+            logger.warning("Reset token has expired")
+            return None
+        except JWTError as e:
+            logger.error(f"Reset token verification failed: {str(e)}")
+            return None
+
+    async def reset_password(self, token: str, new_password: str) -> bool:
+        """Reset user's password using a valid reset token."""
+        try:
+            # Verify and decode the token
+            payload = jwt.decode(
+                token=token,
+                key=settings.JWT_SECRET,
+                algorithms=[settings.JWT_ALGORITHM]
+            )
+            
+            # Check token type and expiration
+            if payload.get("type") != "password_reset":
+                logger.warning("Invalid token type for password reset")
+                return False
+
+            email = payload.get("email")
+            if not email:
+                logger.warning("No email in reset token")
+                return False
+
+            # Hash the new password
+            hashed_password = get_password_hash(new_password)
+
+            # Update the password in database
+            async with db.get_client() as client:
+                user = await client.user.update(
+                    where={"email": email},
+                    data={"password": hashed_password}
+                )
+                
+                if user:
+                    logger.info(f"Password reset successful for user: {email}")
+                    return True
+                return False
+
+        except jwt.ExpiredSignatureError:
+            logger.warning("Reset token has expired")
+            return False
+        except JWTError as e:
+            logger.error(f"Invalid reset token: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to reset password: {str(e)}")
             raise
 
 auth_service = AuthService() 

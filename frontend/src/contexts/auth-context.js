@@ -30,15 +30,24 @@ export function AuthProvider({ children }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(JSON.stringify(data));
+        throw new Error(data.detail || 'Signup failed');
       }
 
       localStorage.setItem('token', data.access_token);
-      toast.success('Signup successful! Please verify your email.');
+      toast.success('Account created successfully! Please check your email for verification.');
       router.push('/verify-email');
       return data;
     } catch (error) {
-      toast.error('Signup failed. Please check the form for errors.');
+      const errorMessage = error.message;
+      if (errorMessage.includes('already registered')) {
+        toast.error('This email is already registered. Please try logging in instead.');
+      } else if (errorMessage.includes('validation failed')) {
+        toast.error('Please check your email and password format.');
+      } else if (errorMessage.includes('connect')) {
+        toast.error('Unable to connect to the server. Please try again later.');
+      } else {
+        toast.error('Failed to create account. Please try again.');
+      }
       throw error;
     }
   }, [router]);
@@ -57,48 +66,58 @@ export function AuthProvider({ children }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(JSON.stringify(data));
+        const errorMessage = data.detail || 'Login failed';
+        logger.error(`Login failed: ${errorMessage}`);
+        throw new Error(errorMessage);
       }
 
       localStorage.setItem('token', data.access_token);
       await mutate();
       
-      toast.success('Login successful!');
+      toast.success('Welcome back!');
       router.push('/');
       return data;
     } catch (error) {
-      toast.error('Login failed. Please check your credentials.');
+      const errorMessage = error.message;
+      if (errorMessage.includes('Invalid email or password')) {
+        toast.error('Invalid email or password. Please try again.');
+      } else if (errorMessage.includes('connect')) {
+        toast.error('Unable to connect to the server. Please try again later.');
+      } else {
+        toast.error('Login failed. Please try again.');
+      }
       throw error;
     }
   }, [router, mutate]);
 
   const logout = useCallback(async () => {
     try {
-      // Call backend logout endpoint
       const token = localStorage.getItem('token');
       if (token) {
-        await fetch('/api/auth/logout', {
+        const response = await fetch('/api/auth/logout', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.detail || 'Logout failed');
+        }
       }
 
-      mutate();
       localStorage.removeItem('token');
-
+      await mutate(null);
       router.replace('/login');
-      mutate();
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
       localStorage.removeItem('token');
-      document.cookie = `token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
       router.replace('/login');
-      toast.error('Logged out with some errors');
+      toast.error('There was an issue during logout, but you have been logged out successfully');
     }
-  }, [router]);
+  }, [router, mutate]);
 
   const updateProfile = useCallback(async (userData) => {
     try {
@@ -164,40 +183,61 @@ export function AuthProvider({ children }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(JSON.stringify(data));
+        throw new Error(data.detail || 'Failed to send reset email');
       }
 
-      toast.success('Reset email sent successfully');
+      toast.success('Password reset instructions have been sent to your email. Please check your inbox.');
       return data;
     } catch (error) {
-      toast.error('Failed to send reset email. Please try again.');
+      const errorMessage = error.message;
+      if (errorMessage.includes('not found')) {
+        toast.error('No account found with this email address.');
+      } else if (errorMessage.includes('connect')) {
+        toast.error('Unable to connect to the server. Please try again later.');
+      } else if (errorMessage.includes('rate limit')) {
+        toast.error('Too many reset attempts. Please try again later.');
+      } else {
+        toast.error('Failed to send reset email. Please try again.');
+      }
       throw error;
     }
   }, []);
 
-  const resetPassword = useCallback(async (otp, password) => {
+  const resetPassword = useCallback(async (token, newPassword) => {
     try {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ otp, password }),
+        body: JSON.stringify({ 
+          token,
+          new_password: newPassword 
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(JSON.stringify(data));
+        throw new Error(data.detail || 'Failed to reset password');
       }
 
-      toast.success('Password reset successfully');
+      toast.success('Password has been reset successfully. Please login with your new password.');
+      router.push('/login');
       return data;
     } catch (error) {
-      toast.error('Failed to reset password. Please try again.');
+      const errorMessage = error.message;
+      if (errorMessage.includes('Invalid') || errorMessage.includes('expired')) {
+        toast.error('The password reset link has expired or is invalid. Please request a new one.');
+        router.push('/forgot-password');
+      } else if (errorMessage.includes('connect')) {
+        toast.error('Unable to connect to the server. Please try again later.');
+      } else {
+        toast.error('Failed to reset password. Please try again.');
+      }
       throw error;
     }
-  }, []);
+  }, [router]);
 
   // Use useEffect for initial auth check
   useEffect(() => {
