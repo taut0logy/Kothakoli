@@ -25,6 +25,7 @@ class StoryPrompt(BaseModel):
 @router.post("/generate-story")
 async def generate_story(
     prompt: StoryPrompt,
+    is_public: bool = True,
     current_user: Dict = Depends(get_current_user)
 ):
     """Generate a story PDF from a prompt."""
@@ -33,7 +34,8 @@ async def generate_story(
         result = await pdf_service.generate_story_pdf(
             prompt=prompt.prompt,
             user_id=str(current_user["id"]),
-            model_name=prompt.model_name
+            model_name=prompt.model_name,
+            is_public=is_public
         )
 
         return {

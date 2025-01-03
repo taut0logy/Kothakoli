@@ -57,7 +57,7 @@ class PDFService:
         doc.build(story)
         return buffer.getvalue()
 
-    async def generate_story_pdf(self, prompt: str, user_id: str, model_name: Optional[str] = None) -> Dict:
+    async def generate_story_pdf(self, prompt: str, user_id: str, model_name: Optional[str] = None, is_public: bool = True) -> Dict:
         """Generate a PDF story from a prompt."""
         try:
             # Generate story content using Gemini
@@ -118,6 +118,7 @@ class PDFService:
                 user_id=user_id,
                 content_type="PDF",
                 title=story_data["title"],
+                is_public=is_public,
                 content=story_data["content"],
                 filename=file_id,
                 file_url=file_url,

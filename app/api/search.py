@@ -20,6 +20,9 @@ class ContentType(str, Enum):
     PDF = "PDF"
     VOICE = "VOICE"
     FILE = "FILE"
+    CHATBOT = "CHATBOT"
+    BENGALI_STORY = "BENGALI_STORY"
+    BENGALI_TRANSLATION = "BENGALI_TRANSLATION"
 
 # Search Response Models
 class UserSearchResult(BaseModel):

@@ -5,8 +5,10 @@ from ..api.auth import get_current_user
 from pydantic import BaseModel, Field
 from datetime import datetime
 from app.core.database import db
+import logging
 
 router = APIRouter(prefix="/content", tags=["content"])
+logger = logging.getLogger(__name__)
 
 class ContentResponse(BaseModel):
     id: str
@@ -144,4 +146,110 @@ async def delete_content(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
+        )
+
+@router.post("/{content_id}/toggle-public")
+async def toggle_content_public(
+    content_id: str,
+    current_user = Depends(get_current_user)
+) -> Dict:
+    """Toggle the public status of a content."""
+    try:
+        async with db.get_client() as client:
+            # Get the content
+            content = await client.generatedcontent.find_unique(
+                where={"id": content_id}
+            )
+            
+            if not content:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Content not found"
+                )
+                
+            # Check if user owns the content
+            if content.userId != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to modify this content"
+                )
+            
+            # Toggle the isPublic status
+            updated_content = await client.generatedcontent.update(
+                where={"id": content_id},
+                data={"isPublic": not content.isPublic}
+            )
+            
+            return {
+                "id": updated_content.id,
+                "isPublic": updated_content.isPublic
+            }
+            
+    except Exception as e:
+        logger.error(f"Error toggling content public status: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update content visibility"
+        )
+
+@router.get("/search")
+async def search_content(
+    query: str,
+    page: int = 1,
+    limit: int = 10,
+    current_user = Depends(get_current_user)
+) -> Dict:
+    """Search for public PDFs."""
+    try:
+        skip = (page - 1) * limit
+        
+        async with db.get_client() as client:
+            # Get public PDFs that match the query
+            contents = await client.generatedcontent.find_many(
+                where={
+                    "type": "PDF",
+                    "isPublic": True,
+                    "OR": [
+                        {"title": {"contains": query, "mode": "insensitive"}},
+                        {"content": {"contains": query, "mode": "insensitive"}}
+                    ]
+                },
+                skip=skip,
+                take=limit,
+                include={
+                    "user": {
+                        "select": {
+                            "id": True,
+                            "name": True,
+                            "email": True
+                        }
+                    }
+                }
+            )
+            
+            # Get total count for pagination
+            total = await client.generatedcontent.count(
+                where={
+                    "type": "PDF",
+                    "isPublic": True,
+                    "OR": [
+                        {"title": {"contains": query, "mode": "insensitive"}},
+                        {"content": {"contains": query, "mode": "insensitive"}}
+                    ]
+                }
+            )
+            
+            return {
+                "items": contents,
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "pages": (total + limit - 1) // limit
+            }
+            
+    except Exception as e:
+        logger.error(f"Error searching content: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search content"
         ) 

@@ -106,7 +106,7 @@ export const api = {
   },
 
   // PDF endpoints
-  async generateStory(prompt, modelName = null) {
+  async generateStory(prompt, modelName = null, isPublic = true) {
     const response = await fetch(`${API_BASE_URL}/api/pdf/generate-story`, {
       method: 'POST',
       headers: {
@@ -115,7 +115,8 @@ export const api = {
       },
       body: JSON.stringify({
         prompt,
-        model_name: modelName
+        model_name: modelName,
+        is_public: isPublic
       })
     })
     if (!response.ok) {
@@ -151,14 +152,14 @@ export const api = {
     return response.json()
   },
 
-  async generateCustomPDF(prompt, templateType) {
+  async generateCustomPDF(prompt, templateType, isPublic = true) {
     const response = await fetch(`${API_BASE_URL}/api/pdf/generate-custom`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },
-      body: JSON.stringify({ prompt, template_type: templateType }),
+      body: JSON.stringify({ prompt, template_type: templateType, is_public: isPublic }),
     })
     if (!response.ok) {
       const error = await response.json()

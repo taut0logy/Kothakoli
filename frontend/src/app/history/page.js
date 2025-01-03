@@ -12,6 +12,9 @@ const CONTENT_TYPES = [
   { label: 'Chat', value: 'CHAT' },
   { label: 'Voice', value: 'VOICE' },
   { label: 'Files', value: 'FILE' },
+  { label: 'Bangla Chat', value: 'CHATBOT' },
+  { label: 'Bangla Story', value: 'BENGALI_STORY' },
+  { label: 'Bangla Translation', value: 'BENGALI_TRANSLATION' },
 ];
 
 const ITEMS_PER_PAGE = 10;
@@ -118,7 +121,7 @@ export default function HistoryPage() {
             {totalItems} {totalItems === 1 ? 'item' : 'items'} loaded
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {CONTENT_TYPES.map((type) => (
             <Button
               key={type.value || 'all'}

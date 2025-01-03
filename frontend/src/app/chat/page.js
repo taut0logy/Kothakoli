@@ -8,8 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChatMessage } from "@/components/chat-message"
 import { FileUpload } from "@/components/file-upload"
 import { api } from "@/lib/api"
-import { Mic, MicOff, Loader2, ChevronDown } from "lucide-react"
+import { Mic, MicOff, Loader2, ChevronDown, FileText } from "lucide-react"
 import { toast } from "sonner"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 
 export default function Home() {
   const [messages, setMessages] = useState([])
@@ -20,6 +23,8 @@ export default function Home() {
   const audioChunks = useRef([])
   const [showScrollButton, setShowScrollButton] = useState(false)
   const chatContainerRef = useRef(null)
+  const [isPublic, setIsPublic] = useState(false)
+  const [pdfPrompt, setPdfPrompt] = useState('')
 
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target
@@ -142,33 +147,25 @@ export default function Home() {
   }
 
   const handleFileUpload = async (file) => {
+    if (!file) return
+
+    setIsLoading(true)
     try {
-      toast.loading("Processing file...", { id: "fileUploadLoading" });
-      const response = await api.uploadFile(file);
-      
-      if (response.success) {
+      const result = await api.processFile(file)
+      if (result.success) {
         setMessages(prev => [
           ...prev,
-          { text: `File processed: ${file.name}`, isBot: false },
-          { text: response.data.text, isBot: true }
-        ]);
-        toast.success("File processed successfully", { id: "fileUploadSuccess" });
-      } else if (response.error) {
-        toast.error("Failed to process file", {
-          id: "fileUploadError",
-          description: response.error || "An unexpected error occurred"
-        });
+          { text: `Processing file: ${file.name}`, isBot: false },
+          { text: result.data.text, isBot: true }
+        ])
+        setInputMessage('') // Clear the input message after successful processing
       }
     } catch (error) {
       toast.error("Failed to process file", {
-        id: "fileUploadError",
-        description: error.message || "An unexpected error occurred"
-      });
-      // Reset any upload state or progress
-      setMessages(prev => [
-        ...prev,
-        { text: `Error processing file: ${file.name}`, isBot: false }
-      ]);
+        description: error.message
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -207,6 +204,48 @@ export default function Home() {
       }
     } catch (error) {
       toast.error("Failed to generate story", {
+        description: error.message
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const generatePDF = async () => {
+    if (!pdfPrompt.trim()) return
+
+    setIsLoading(true)
+    try {
+      const result = await api.generatePDF(pdfPrompt, isPublic)
+      
+      if (result.success) {
+        setPdfPrompt('')
+        toast.success("PDF generated successfully", {
+          description: "Click the download button to get your PDF",
+          action: {
+            label: "Download",
+            onClick: async () => {
+              try {
+                const blob = await api.downloadPdf(result.data.file_id)
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = result.data.title + '.pdf'
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+              } catch (error) {
+                toast.error("Failed to download PDF", {
+                  description: error.message
+                })
+              }
+            }
+          }
+        })
+      }
+    } catch (error) {
+      toast.error("Failed to generate PDF", {
         description: error.message
       })
     } finally {
@@ -389,34 +428,32 @@ export default function Home() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="pdf">
-            <Card className="border-t-0">
-              <CardHeader>
-                <CardTitle>Story Generation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col space-y-4">
-                  <div className="sticky bottom-0 bg-background pt-2">
-                    <Input
-                      placeholder="Enter your story prompt..."
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      disabled={isLoading}
-                    />
-                    <Button
-                      className="w-full mt-2"
-                      onClick={() => handleGenerateStory(inputMessage)}
-                      disabled={isLoading || !inputMessage.trim()}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : null}
-                      Generate Story
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="pdf" className="mt-0">
+            <div className="space-y-4">
+              <div className="flex items-center justify-end space-x-2">
+                <Label htmlFor="pdf-public">Make PDF Public</Label>
+                <Switch
+                  id="pdf-public"
+                  checked={isPublic}
+                  onCheckedChange={setIsPublic}
+                />
+              </div>
+              <Textarea
+                value={pdfPrompt}
+                onChange={(e) => setPdfPrompt(e.target.value)}
+                placeholder="Enter your prompt for PDF generation..."
+                className="min-h-[200px]"
+                disabled={isLoading}
+              />
+              <Button
+                onClick={generatePDF}
+                disabled={isLoading || !pdfPrompt.trim()}
+                className="w-full"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Generate {isPublic ? 'Public' : 'Private'} PDF
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
