@@ -1,8 +1,8 @@
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+from .api import auth, chat, files, pdf, content
 from .core.config import settings
 
 # Configure logging
@@ -28,6 +28,12 @@ app.add_middleware(
     allow_headers=settings.CORS_HEADERS,
 )
 
+# Include routers with /api prefix
+app.include_router(auth.router, prefix=settings.API_PREFIX)
+app.include_router(chat.router, prefix=settings.API_PREFIX)
+app.include_router(files.router, prefix=settings.API_PREFIX)
+app.include_router(pdf.router, prefix=settings.API_PREFIX)
+app.include_router(content.router, prefix=settings.API_PREFIX)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

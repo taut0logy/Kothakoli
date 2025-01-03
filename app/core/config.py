@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # App settings
-    APP_NAME: str = "StoryGen AI"
+    APP_NAME: str = "Kothakoli"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int
     SMTP_USER: str
     SMTP_PASSWORD: str
-    FROM_EMAIL: str = "noreply@storygen.ai"
+    FROM_EMAIL: str = "noreply@kothakoli.ai"
     
     # JWT settings
     JWT_SECRET: str
@@ -109,6 +109,9 @@ class Settings(BaseSettings):
     CORS_METHODS: List[str] = ["*"]
     CORS_HEADERS: List[str] = ["*"]
     ENCRYPTION_KEY: str
+    
+    # Update these specific settings
+    API_URL: str = "http://localhost:8000"
     
     class Config:
         env_file = ".env"

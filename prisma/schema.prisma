@@ -1,12 +1,18 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-py"
+  interface = "asyncio"
+  recursive_type_depth = 5
+}
+
 datasource db {
   provider = "mongodb"
   url      = env("MONGODB_URL")
-}
-
-generator client {
-  provider             = "prisma-client-py"
-  interface           = "asyncio"
-  recursive_type_depth = 5
 }
 
 enum ContentType {
@@ -27,7 +33,7 @@ model User {
   password      String
   name          String?
   apiKey        String?
-  modelName     String?   @default("gemini-pro")
+  modelName     String?   @default("gemini-1.5-flash")
   isVerified    Boolean   @default(false)
   verifiedAt    DateTime?
   createdAt     DateTime  @default(now())

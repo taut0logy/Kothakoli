@@ -1,0 +1,137 @@
+/* Prism Theme */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
+  font-family: var(--font-mono, Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace);
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  line-height: 1.6;
+  font-size: 0.9em;
+  tab-size: 2;
+  hyphens: none;
+  -webkit-hyphens: none;
+}
+
+/* Code blocks */
+pre[class*="language-"] {
+  padding: 1em;
+  margin: 0.5em 0;
+  overflow: auto;
+  border-radius: 0.5em;
+}
+
+/* Inline code */
+:not(pre) > code[class*="language-"] {
+  padding: 0.2em 0.4em;
+  border-radius: 0.3em;
+  white-space: normal;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+.token.namespace {
+  opacity: 0.7;
+}
+
+.token.property,
+.token.tag,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: hsl(var(--destructive));
+}
+
+.token.boolean,
+.token.number {
+  color: hsl(var(--warning));
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: hsl(var(--success));
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: hsl(var(--info));
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: hsl(var(--primary));
+  font-weight: bold;
+}
+
+.token.function,
+.token.class-name {
+  color: hsl(var(--warning));
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: hsl(var(--destructive));
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+/* Line highlighting */
+.highlight-line {
+  background: hsl(var(--accent) / 0.1);
+  margin: 0 -1em;
+  padding: 0 1em;
+  border-left: 3px solid hsl(var(--primary));
+}
+
+/* Dark mode adjustments */
+:root[class~="dark"] code[class*="language-"],
+:root[class~="dark"] pre[class*="language-"] {
+  text-shadow: none;
+}
+
+/* Scrollbar styles for code blocks */
+pre[class*="language-"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+pre[class*="language-"]::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+pre[class*="language-"]::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 4px;
+}
+
+pre[class*="language-"]::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.7);
+} 
