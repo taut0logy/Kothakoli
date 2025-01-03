@@ -27,22 +27,25 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <head>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap" />
+      </head>
+      <body className={`${inter.className} ${geistSans.variable} ${geistMono.variable}`}>
         <AuthProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
             disableTransitionOnChange
-        >
-          <div className="relative min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-1">
-              {children}
-            </main>
-          </div>
-          <Toaster richColors closeButton position="top-right" />
-        </ThemeProvider>
+          >
+            <div className="relative min-h-screen flex flex-col">
+              <Header />
+              <main className="flex-1">
+                {children}
+              </main>
+            </div>
+            <Toaster richColors closeButton position="top-right" />
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

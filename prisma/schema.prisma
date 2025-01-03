@@ -20,6 +20,7 @@ enum ContentType {
   PDF
   VOICE
   FILE
+  CHATBOT
 }
 
 enum Role {
@@ -84,6 +85,7 @@ model File {
 model GeneratedContent {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
   type        ContentType
+  isPublic    Boolean     @default(true)
   title       String
   filename    String?
   prompt      String?

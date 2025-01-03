@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
-from .api import auth, chat, files, pdf, user, admin, content, search
+from .api import auth, chat, files, pdf, user, admin, content, search, chatbot
 from .core.config import settings
 
 # Configure logging
@@ -22,7 +22,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,7 +37,7 @@ app.include_router(user.router, prefix=settings.API_PREFIX)
 app.include_router(content.router, prefix=settings.API_PREFIX)
 app.include_router(admin.router, prefix=settings.API_PREFIX)
 app.include_router(search.router, prefix=settings.API_PREFIX)
-
+app.include_router(chatbot.router, prefix=settings.API_PREFIX)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unhandled exceptions."""

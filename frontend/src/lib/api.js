@@ -22,6 +22,27 @@ export const api = {
     return data // Return the actual response data
   },
 
+  async sendChatbotMessage(message, modelName = null) {
+    const response = await fetch(`${API_BASE_URL}/api/chatbot/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ 
+        message,
+        model_name: modelName 
+      }),
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to send message')
+    }
+    const data = await response.json()
+    return data // Return the actual response data
+  },
+
+  // Voice endpoints
   async sendVoice(audioBlob, modelName = null) {
     const formData = new FormData()
     formData.append('audio', audioBlob, 'audio.webm')
@@ -334,4 +355,37 @@ export const api = {
     }
     return response.json();
   },
+
+  async checkBanglishSpelling(text) {
+    try {
+      if (!localStorage.getItem('token')) {
+        console.warn('No auth token found');
+        return { status: "error", suggestions: [] };
+      }
+
+      // Encode the text properly for URL
+      const encodedText = encodeURIComponent(text);
+      const url = `${API_BASE_URL}/api/chatbot/check-spelling?message=${encodedText}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('Spelling check failed:', response.status);
+        return { status: "error", suggestions: [] };
+      }
+      
+      const data = await response.json();
+      console.log('Spell check response:', data); // Debug log
+      return data;
+    } catch (error) {
+      console.error('Error checking spelling:', error);
+      return { status: "error", suggestions: [] };
+    }
+  }
 } 
