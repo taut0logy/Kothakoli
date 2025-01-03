@@ -6,7 +6,7 @@ Welcome to the **KUET Cosmic Cannonball** project! This repository delivers an a
 ---
 
 ## 👥 Team Members
-- - Raufun Ahsan  
+-  Raufun Ahsan  
 - Mohammad Abir Rahman  
 - Md. Sakibur Rahman  
 
