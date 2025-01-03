@@ -37,6 +37,7 @@ class AuthService:
                 if existing_user:
                     raise ValueError("Email already registered")
 
+                logger.info(f"Creating user with email: {email}, name: {name}")
                 # Hash password
                 hashed_password = get_password_hash(password)
 
@@ -150,6 +151,16 @@ class AuthService:
 
         except Exception as e:
             logger.error(f"Failed to get user: {str(e)}")
+            raise
+        
+    async def get_user_by_email(self, email: str) -> Optional[Dict]:
+        """Get user by email."""
+        try:
+            async with db.get_client() as client:
+                user = await client.user.find_unique(where={"email": email})
+                return user
+        except Exception as e:
+            logger.error(f"Failed to get user by email: {str(e)}")
             raise
 
     async def update_user(self, user_id: str, data: Dict) -> Dict:

@@ -7,6 +7,8 @@ from ..services.cache_service import cache_service
 from ..core.config import settings
 import logging
 from datetime import datetime
+from ..services.email_service import email_service
+from ..services.otp_service import otp_service
 from ..core.security import get_password_hash
 from ..models.auth import (
     VerifyEmailRequest,
@@ -14,7 +16,6 @@ from ..models.auth import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
 )
-from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
@@ -77,48 +78,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict:
 async def signup(user_data: UserCreate):
     """Create a new user account."""
     try:
-        # Check if user already exists
-        existing_user = await auth_service.get_user_by_email(user_data.email)
-        if existing_user:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={"detail": "Email already registered"}
-            )
-
-        # Create user
         user = await auth_service.create_user(
             email=user_data.email,
             password=user_data.password,
             name=user_data.name
         )
-
-        # Generate access token
-        access_token = auth_service.create_access_token(data={"sub": str(user["id"])})
-
-        return JSONResponse(
-            status_code=status.HTTP_201_CREATED,
-            content={
-                "message": "User created successfully",
-                "access_token": access_token,
-                "token_type": "bearer",
-                "user": {
-                    "id": user["id"],
-                    "email": user["email"],
-                    "name": user["name"]
-                }
-            }
-        )
+        return {"message": "User created successfully", "user": user}
 
     except ValueError as e:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"detail": str(e)}
+            detail=str(e)
         )
     except Exception as e:
         logger.error(f"Error during signup: {str(e)}")
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "An error occurred while creating the user"}
+            detail="An error occurred while creating the user"
         )
 
 @router.post("/login")
@@ -214,8 +190,121 @@ async def delete_me(current_user: Dict = Depends(get_current_user)):
             detail="An error occurred while deleting the user"
         )
 
+@router.post("/verify-email")
+async def verify_email(
+    token: str = Body(..., embed=True)
+) -> Dict[str, Any]:
+    try:
+        # Verify the token
+        payload = email_service.verify_token(token, "email_verification")
+        if not payload:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or expired verification token"
+            )
 
+        # Update user's email verification status
+        email = payload.get("email")
+        if not email:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid token payload"
+            )
 
+        # Mark email as verified
+        success = await auth_service.verify_email(email)
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to verify email"
+            )
+
+        return {
+            "success": True,
+            "message": "Email verified successfully"
+        }
+
+    except Exception as e:
+        logger.error(f"Email verification failed: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+@router.post("/resend-verification")
+async def resend_verification(request: ResendVerificationRequest):
+    """Resend verification email to the user."""
+    try:
+        user = await auth_service.get_user_by_email(request.email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        if user.isVerified:
+            return {"message": "Email already verified"}
+
+        # Send verification email
+        await email_service.send_verification_email(user.email)
+        return {"message": "Verification email sent"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send password reset OTP to user's email."""
+    try:
+        user = await auth_service.get_user_by_email(request.email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Generate and send OTP
+        otp = await otp_service.create_otp(user.email, 'password_reset')
+        await email_service.send_password_reset_email(user.email, otp)
+        return {"message": "Password reset email sent"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset user's password using OTP."""
+    try:
+        user = await auth_service.get_user_by_email(request.email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Verify OTP
+        is_valid = await otp_service.verify_otp(
+            request.email,
+            request.otp,
+            'password_reset'
+        )
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired OTP"
+            )
+
+        # Update password
+        hashed_password = get_password_hash(request.password)
+        await auth_service.update_user(user.id, {"password": hashed_password})
+
+        # Invalidate OTP
+        await otp_service.invalidate_otp(request.email, 'password_reset')
+        return {"message": "Password reset successfully"}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
