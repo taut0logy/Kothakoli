@@ -334,4 +334,82 @@ export const api = {
     }
     return response.json();
   },
+
+  async checkBanglishSpelling(text) {
+    try {
+      if (!localStorage.getItem('token')) {
+        console.warn('No auth token found');
+        return { status: "error", suggestions: [] };
+      }
+
+      // Encode the text properly for URL
+      const encodedText = encodeURIComponent(text);
+      const url = `${API_BASE_URL}/api/chatbot/check-spelling?message=${encodedText}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('Spelling check failed:', response.status);
+        return { status: "error", suggestions: [] };
+      }
+      
+      const data = await response.json();
+      console.log('Spell check response:', data); // Debug log
+      return data;
+    } catch (error) {
+      console.error('Error checking spelling:', error);
+      return { status: "error", suggestions: [] };
+    }
+  },
+
+  async getCachedConversations() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chatbot/cached-conversations`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch conversations');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching cached conversations:', error);
+      throw error;
+    }
+  },
+
+  async cacheConversation(conversationId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chatbot/cache-conversation`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to cache conversation');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error caching conversation:', error);
+      throw error;
+    }
+  }
 } 
