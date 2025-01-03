@@ -1,53 +1,49 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import ContentHistory from '@/components/content-history';
+import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-
-const CONTENT_TYPES = [
-  { label: 'All', value: null },
-  { label: 'PDFs', value: 'PDF' },
-  { label: 'Chat', value: 'CHAT' },
-  { label: 'Voice', value: 'VOICE' },
-  { label: 'Files', value: 'FILE' },
-];
+import { toast } from 'sonner';
+import ContentHistory from '@/components/content-history';
 
 const ITEMS_PER_PAGE = 10;
 
-export default function HistoryPage() {
+export default function UserProfilePage() {
+  const { id } = useParams();
+  const router = useRouter();
+  
+  const [user, setUser] = useState(null);
   const [contents, setContents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeFilter, setActiveFilter] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
-    loadContents(true);
-  }, [activeFilter]);
+    fetchUserContents(true);
+  }, [id]);
 
-  const loadContents = async (reset = false) => {
+  const fetchUserContents = async (reset = false) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const currentPage = reset ? 1 : page;
       if (reset) {
         setPage(1);
         setContents([]);
       }
 
-      const response = await api.getContents({
-        contentType: activeFilter,
+      const response = await api.getUserPdfs({
+        userId: id,
         page: currentPage,
         limit: ITEMS_PER_PAGE,
         sortBy: 'createdAt',
         sortOrder: 'desc'
       });
-
+      
       // Handle array response format
       const items = Array.isArray(response) ? response : [];
       
@@ -61,7 +57,6 @@ export default function HistoryPage() {
       const hasMoreItems = items.length === ITEMS_PER_PAGE;
       
       setHasMore(hasMoreItems);
-      setTotalItems(prev => reset ? items.length : prev + items.length);
       
       if (reset) {
         setContents(mappedItems);
@@ -69,8 +64,35 @@ export default function HistoryPage() {
         setContents(prev => [...prev, ...mappedItems]);
       }
     } catch (error) {
-      console.error('Error loading contents:', error);
-      setError('Failed to load content history');
+      console.error('Error fetching user contents:', error);
+      
+      // Handle specific error cases
+      if (error.message.includes('Authentication failed') || error.message.includes('401')) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to view this content",
+          variant: "destructive"
+        });
+        router.push('/login');
+        return;
+      }
+      
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        toast({
+          title: "User Not Found",
+          description: "The requested user profile does not exist",
+          variant: "destructive"
+        });
+        router.push('/');
+        return;
+      }
+      
+      setError('Failed to load user contents. Please try again later.');
+      toast({
+        title: "Error",
+        description: "Failed to load user contents. Please try again later.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -79,30 +101,27 @@ export default function HistoryPage() {
   const loadMore = () => {
     if (!loading && hasMore) {
       setPage(prev => prev + 1);
-      loadContents(false);
+      fetchUserContents(false);
     }
-  };
-
-  const handleDelete = (deletedId) => {
-    setContents(contents.filter(content => content._id !== deletedId));
-    setTotalItems(prev => prev - 1);
-  };
-
-  const handleFilterChange = (type) => {
-    setActiveFilter(type);
   };
 
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center text-red-600">
-          <p>{error}</p>
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
           <Button
-            onClick={() => loadContents(true)}
-            className="mt-4"
+            onClick={() => fetchUserContents(true)}
             variant="secondary"
+            className="mr-2"
           >
             Retry
+          </Button>
+          <Button
+            onClick={() => router.push('/')}
+            variant="outline"
+          >
+            Go Home
           </Button>
         </div>
       </div>
@@ -110,26 +129,21 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="container px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Content History</h1>
+    <div className="container px-4 py-8 mx-auto">
+      <div className="mb-8">
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="mb-4"
+        >
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold">User Profile</h1>
+        {user && (
           <p className="text-muted-foreground mt-1">
-            {totalItems} {totalItems === 1 ? 'item' : 'items'} loaded
+            {user.name} ({user.email})
           </p>
-        </div>
-        <div className="flex gap-2">
-          {CONTENT_TYPES.map((type) => (
-            <Button
-              key={type.value || 'all'}
-              variant={activeFilter === type.value ? "default" : "outline"}
-              onClick={() => handleFilterChange(type.value)}
-              className="min-w-[80px]"
-            >
-              {type.label}
-            </Button>
-          ))}
-        </div>
+        )}
       </div>
 
       {loading && contents.length === 0 ? (
@@ -138,16 +152,11 @@ export default function HistoryPage() {
         </div>
       ) : contents.length === 0 ? (
         <div className="text-center">
-          <p className="text-muted-foreground">
-            {activeFilter 
-              ? `No ${activeFilter.toLowerCase()} content found`
-              : 'No content history found'
-            }
-          </p>
+          <p className="text-muted-foreground">No content found for this user</p>
         </div>
       ) : (
         <>
-          <ContentHistory contents={contents} onDelete={handleDelete} />
+          <ContentHistory contents={contents} />
           
           {hasMore && (
             <div className="mt-8 text-center">

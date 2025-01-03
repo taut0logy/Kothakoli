@@ -1,132 +1,76 @@
-import smtplib
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
 from typing import Optional
-from jose import jwt, JWTError
-from app.core.config import settings
+from ..core.config import settings
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 class EmailService:
     def __init__(self):
-        self.smtp_server = settings.SMTP_HOST
-        self.smtp_port = settings.SMTP_PORT
-        self.smtp_username = settings.SMTP_USER
-        self.smtp_password = settings.SMTP_PASSWORD
-        self.from_email = settings.FROM_EMAIL
-        self.app_name = settings.APP_NAME
-        self.frontend_url = settings.FRONTEND_URL
+        self.mail_config = ConnectionConfig(
+            MAIL_USERNAME=settings.SMTP_USER,
+            MAIL_PASSWORD=settings.SMTP_PASSWORD,
+            MAIL_FROM=settings.FROM_EMAIL,
+            MAIL_PORT=settings.SMTP_PORT,
+            MAIL_SERVER=settings.SMTP_HOST,
+            MAIL_FROM_NAME=settings.APP_NAME,
+            MAIL_STARTTLS=True,
+            MAIL_SSL_TLS=False,
+            USE_CREDENTIALS=True,
+            TEMPLATE_FOLDER=Path(__file__).parent.parent / 'templates'
+        )
+        self.fastmail = FastMail(self.mail_config)
+        logger.info("Email Service initialized")
 
-    def _create_smtp_connection(self):
+    async def _send_email(
+        self,
+        email_to: str,
+        subject: str,
+        body: str,
+        template_name: Optional[str] = None,
+        template_body: Optional[dict] = None
+    ) -> None:
+        """Send an email."""
         try:
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            server.starttls()
-            server.login(self.smtp_username, self.smtp_password)
-            return server
-        except Exception as e:
-            logger.error(f"Failed to create SMTP connection: {str(e)}")
-            raise
+            message = MessageSchema(
+                subject=subject,
+                recipients=[email_to],
+                body=body,
+                template_body=template_body,
+                subtype="html"
+            )
 
-    def _send_email(self, to_email: str, subject: str, html_content: str):
-        try:
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = f"{self.app_name} <{self.from_email}>"
-            msg['To'] = to_email
+            if template_name:
+                await self.fastmail.send_message(message, template_name=template_name)
+            else:
+                await self.fastmail.send_message(message)
 
-            html_part = MIMEText(html_content, 'html')
-            msg.attach(html_part)
-
-            with self._create_smtp_connection() as server:
-                server.send_message(msg)
-                logger.info(f"Email sent successfully to {to_email}")
+            logger.info(f"Email sent successfully to {email_to}")
         except Exception as e:
             logger.error(f"Failed to send email: {str(e)}")
             raise
 
-    def _generate_verification_token(self, email: str, expiration_minutes: int = 60) -> str:
-        expiration = datetime.utcnow() + timedelta(minutes=expiration_minutes)
-        return jwt.encode(
-            {
-                'email': email,
-                'exp': expiration,
-                'type': 'email_verification'
-            },
-            settings.JWT_SECRET,
-            algorithm=settings.JWT_ALGORITHM
-        )
-
-
-    def verify_token(self, token: str, token_type: str) -> Optional[dict]:
+    async def send_admin_credentials(self, email: str, name: str, password: str) -> None:
+        """Send admin credentials to a newly created admin user."""
         try:
-            payload = jwt.decode(
-                token, 
-                settings.JWT_SECRET,
-                algorithms=[settings.JWT_ALGORITHM]
+            subject = "Your Admin Account Credentials"
+            template_body = {
+                "name": name,
+                "email": email,
+                "password": password,
+                "login_url": f"{settings.FRONTEND_URL}/login"
+            }
+
+            await self._send_email(
+                email_to=email,
+                subject=subject,
+                body="",  # Body will be provided by template
+                template_name="admin_credentials.html",
+                template_body=template_body
             )
-            if payload.get('type') != token_type:
-                return None
-            return payload
-        except jwt.ExpiredSignatureError:
-            logger.warning("Token has expired")
-            return None
-        except JWTError as e:
-            logger.error(f"JWT verification failed: {str(e)}")
-            return None
-
-    def send_verification_email(self, email: str):
-        token = self._generate_verification_token(email)
-        verification_link = f"{self.frontend_url}/verify-email?token={token}"
-        
-        html_content = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Welcome to {self.app_name}!</h2>
-            <p>Please verify your email address by clicking the button below:</p>
-            <a href="{verification_link}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 16px 0;">
-                Verify Email
-            </a>
-            <p>Or copy and paste this link in your browser:</p>
-            <p style="color: #4F46E5;">{verification_link}</p>
-            <p>This link will expire in 60 minutes.</p>
-            <p>If you didn't create an account with us, please ignore this email.</p>
-        </div>
-        """
-
-        self._send_email(
-            to_email=email,
-            subject=f"Verify your email - {self.app_name}",
-            html_content=html_content
-        )
-
-    def send_password_reset_email(self, email: str, reset_link: str):
-        """Send password reset email with reset link."""
-        try:
-            subject = "Reset Your Password"
-            html_content = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Password Reset Request</h2>
-                <p>You have requested to reset your password. Click the button below to set a new password:</p>
-                <a href="{reset_link}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 16px 0;">
-                    Reset Password
-                </a>
-                <p>Or copy and paste this link in your browser:</p>
-                <p style="color: #4F46E5;">{reset_link}</p>
-                <p>This link will expire in 15 minutes.</p>
-                <p>If you didn't request this, you can safely ignore this email.</p>
-                <p>Best regards,<br>{self.app_name} Team</p>
-            </div>
-            """
-            
-            self._send_email(
-                to_email=email,
-                subject=f"Reset your password - {self.app_name}",
-                html_content=html_content
-            )
-            logger.info(f"Password reset email sent to: {email}")
         except Exception as e:
-            logger.error(f"Failed to send password reset email: {str(e)}")
+            logger.error(f"Failed to send admin credentials: {str(e)}")
             raise
 
 email_service = EmailService() 

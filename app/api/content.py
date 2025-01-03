@@ -4,6 +4,7 @@ from ..services.content_service import content_service
 from ..api.auth import get_current_user
 from pydantic import BaseModel, Field
 from datetime import datetime
+from app.core.database import db
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -45,7 +46,64 @@ async def get_user_content(
             detail=str(e)
         )
 
-@router.get("/{content_id}", response_model=ContentResponse)
+@router.get("/{user_id}", response_model=List[ContentResponse])
+async def get_user_content(
+    user_id: str,
+    content_type: Optional[str] = Query(None, description="Filter by content type (CHAT, PDF, VOICE, FILE)"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """Get user's generated content with optional filtering."""
+    try:
+        async with db.get_client() as client:
+            user = client.user.find_unique(where={"id": user_id})
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+        contents = await content_service.get_user_content(
+                user_id=user_id,
+                content_type=content_type,
+                limit=limit,
+                offset=offset
+            )
+        return contents
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+@router.get("/{user_id}/pdfs", response_model=List[ContentResponse])
+async def get_user_content(
+    user_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """Get user's generated content with optional filtering."""
+    try:
+        async with db.get_client() as client:
+            user = client.user.find_unique(where={"id": user_id})
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+        contents = await content_service.get_user_content(
+                user_id=user_id,
+                content_type="PDF",
+                limit=limit,
+                offset=offset
+            )
+        return contents
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+@router.get("/get/{content_id}", response_model=ContentResponse)
 async def get_content(
     content_id: str,
     current_user: Dict = Depends(get_current_user)

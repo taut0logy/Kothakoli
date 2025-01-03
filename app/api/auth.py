@@ -10,8 +10,6 @@ from datetime import datetime
 from ..services.email_service import email_service
 from ..core.security import get_password_hash
 from ..models.auth import (
-    VerifyEmailRequest,
-    ResendVerificationRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
 )
@@ -250,28 +248,7 @@ async def verify_email(
             detail=str(e)
         )
 
-@router.post("/resend-verification")
-async def resend_verification(request: ResendVerificationRequest):
-    """Resend verification email to the user."""
-    try:
-        user = await auth_service.get_user_by_email(request.email)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
 
-        if user.isVerified:
-            return {"message": "Email already verified"}
-
-        # Send verification email
-        await email_service.send_verification_email(user.email)
-        return {"message": "Verification email sent"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
 
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):

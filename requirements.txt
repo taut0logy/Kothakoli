@@ -13,6 +13,8 @@ cryptography
 python-jose[cryptography]
 jwt
 
+# Email
+fastapi-mail
 
 # Database
 prisma

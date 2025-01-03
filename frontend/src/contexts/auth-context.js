@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
 
       localStorage.setItem('token', data.access_token);
       toast.success('Account created successfully! Please check your email for verification.');
-      router.push('/verify-email');
+      router.push('/login');
       return data;
     } catch (error) {
       const errorMessage = error.message;

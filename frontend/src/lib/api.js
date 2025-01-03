@@ -204,18 +204,134 @@ export const api = {
     return true;
   },
 
-  async getContents() {
-    const response = await fetch(`${API_BASE_URL}/api/content`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-      },
-    });
+  async getContents({ contentType = null, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = {}) {
+    const params = new URLSearchParams();
+    if (contentType) params.append('content_type', contentType);
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    if (sortBy) params.append('sort_by', sortBy);
+    if (sortOrder) params.append('sort_order', sortOrder);
+
+    const queryString = params.toString();
+    const response = await fetch(
+      `${API_BASE_URL}/api/content${queryString ? `?${queryString}` : ''}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
     
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to fetch contents');
     }
     
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getUserContents({userId, contentType = null, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc'}) {
+    const params = new URLSearchParams();
+    if (contentType) params.append('content_type', contentType);
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    if (sortBy) params.append('sort_by', sortBy);
+    if (sortOrder) params.append('sort_order', sortOrder);
+
+    const queryString = params.toString();
+    const response = await fetch(
+      `${API_BASE_URL}/api/content/${userId}${queryString ? `?${queryString}` : ''}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch contents');
+    }
+    
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getUserPdfs({userId, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc'}) {
+    const params = new URLSearchParams();
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    if (sortBy) params.append('sort_by', sortBy);
+    if (sortOrder) params.append('sort_order', sortOrder);
+
+    const queryString = params.toString();
+    const response = await fetch(
+      `${API_BASE_URL}/api/content/${userId}/pdfs${queryString ? `?${queryString}` : ''}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch contents');
+    }
+    
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  },
+
+  // Search endpoints
+  async searchUsers(query, page = 1, limit = 10) {
+    const response = await fetch(
+      `${API_BASE_URL}/api/search/users?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to search users');
+    }
+    return response.json();
+  },
+
+  async searchPdfs(query, page = 1, limit = 10) {
+    const response = await fetch(
+      `${API_BASE_URL}/api/search/pdfs?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to search PDFs');
+    }
+    return response.json();
+  },
+
+  
+
+  async getAllUsers(page = 1, limit = 10) {
+    const response = await fetch(
+      `${API_BASE_URL}/api/admin/users?page=${page}&limit=${limit}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to get users');
+    }
     return response.json();
   },
 } 
