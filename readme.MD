@@ -6,7 +6,11 @@ Welcome to the **KUET Cosmic Cannonball** project! This repository delivers an a
 ---
 
 ## 👥 Team Members
-- [Add team member names here]
+- - Raufun Ahsan  
+- Mohammad Abir Rahman  
+- Md. Sakibur Rahman  
+
+All team members are students from the Department of CSE, KUET.
 
 ---
 
@@ -157,5 +161,4 @@ To ensure a clean and isolated development environment, follow these steps to se
 
 ---
 
-## 📜 License
-[Add license information here]
+
