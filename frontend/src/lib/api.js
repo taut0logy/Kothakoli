@@ -151,20 +151,32 @@ export const api = {
     return response.json()
   },
 
-  async generateCustomPDF(prompt, templateType) {
+  async generateCustomPDF({ content, title, caption, isPublic = true, fontName = "Kalpurush" }) {
     const response = await fetch(`${API_BASE_URL}/api/pdf/generate-custom`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },
-      body: JSON.stringify({ prompt, template_type: templateType }),
-    })
+      body: JSON.stringify({
+        content,
+        title,
+        caption,
+        is_public: isPublic,
+        font_name: fontName
+      }),
+    });
+    
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || 'Failed to generate custom PDF')
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to generate PDF');
     }
-    return response.json()
+    
+    const result = await response.json();
+    return {
+      success: result.success,
+      data: result.data
+    };
   },
 
   async verifyEmail(token) {
@@ -334,4 +346,40 @@ export const api = {
     }
     return response.json();
   },
+
+  async convertToBengali(text) {
+    const response = await fetch(`${API_BASE_URL}/api/convert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ text }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to convert text');
+    }
+    
+    return response.json();
+  },
+
+  async generateTitleCaption(text) {
+    const response = await fetch(`${API_BASE_URL}/api/convert/generate-title-caption`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ text }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to generate title and caption');
+    }
+    
+    return response.json();
+  }
 } 

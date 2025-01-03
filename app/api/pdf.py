@@ -7,6 +7,7 @@ from typing import Optional
 from ..services.pdf_service import PDFService
 from .auth import get_current_user
 from typing import Dict
+from fastapi import status
 
 
 # Configure logging
@@ -21,6 +22,17 @@ pdf_service = PDFService()
 class StoryPrompt(BaseModel):
     prompt: str
     model_name: Optional[str] = None
+
+class PDFResponse(BaseModel):
+    success: bool
+    data: Dict[str, str]
+
+class CustomPDFRequest(BaseModel):
+    content: str
+    title: str
+    caption: Optional[str] = None
+    font_name: str = "Kalpurush"
+    is_public: bool = True 
 
 @router.post("/generate-story")
 async def generate_story(
@@ -61,4 +73,36 @@ async def download_pdf(file_id: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error downloading PDF: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to download PDF") 
+        raise HTTPException(status_code=500, detail="Failed to download PDF")
+
+@router.post("/generate-custom", response_model=PDFResponse)
+async def generate_custom_pdf(
+    request: CustomPDFRequest,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Generate a custom PDF with Bengali text."""
+    try:
+        result = await pdf_service.generate_custom_pdf(
+            content=request.content,
+            title=request.title,
+            caption=request.caption,
+            user_id=current_user["id"],
+            font_name=request.font_name,
+            is_public=request.is_public
+        )
+        return PDFResponse(
+            success=True,
+            data={
+                "file_id": result["data"]["file_id"],
+                "path": result["data"]["path"],
+                "url": result["data"]["url"],
+                "title": result["data"]["title"]
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error generating custom PDF: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+    
