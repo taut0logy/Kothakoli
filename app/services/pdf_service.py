@@ -152,7 +152,7 @@ class PDFService:
             pdf_content = self._create_pdf(story_data)
             
             # Generate unique file ID
-            file_id = f"{uuid.uuid4()}.pdf"
+            file_id = f"{story_data["title"]}_{uuid.uuid4()}.pdf"
             
             # Save PDF to file system
             pdf_path = os.path.join(settings.PDF_STORAGE_PATH, file_id)

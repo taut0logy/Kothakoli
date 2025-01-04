@@ -70,7 +70,7 @@ const DashboardNav = () => {
         },
         {
           title: "Search",
-          href: "/",
+          href: "/search",
           description: "Search for users and PDFs"
         },
       ]
