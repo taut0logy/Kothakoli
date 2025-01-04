@@ -1,135 +1,247 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Loader2, Download } from 'lucide-react';
+import ContentHistory from '@/components/content-history';
 
-export default function AdminUserViewPage() {
+const CONTENT_TYPES = [
+  { label: 'All', value: null },
+  { label: 'PDFs', value: 'PDF' },
+  { label: 'Chat', value: 'CHAT' },
+  { label: 'Voice', value: 'VOICE' },
+  { label: 'Files', value: 'FILE' },
+  { label: 'Bangla Chat', value: 'CHATBOT' },
+  { label: 'Bangla Story', value: 'BENGALI_STORY' },
+  { label: 'Bangla Translation', value: 'BENGALI_TRANSLATION' },
+];
+
+const ITEMS_PER_PAGE = 10;
+
+export default function UserProfilePage() {
   const { id } = useParams();
+  const router = useRouter();
+  
   const [user, setUser] = useState(null);
   const [contents, setContents] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeFilter, setActiveFilter] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const [userResponse, contentsResponse] = await Promise.all([
-          api.getUser(id),
-          api.getUserContents(id)
-        ]);
-        
-        setUser(userResponse);
-        setContents(contentsResponse);
-      } catch (error) {
-        toast.error('Failed to load user data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUserData();
+    fetchUserContents(true);
   }, [id]);
 
-  const handleDownload = async (contentId) => {
+  const fetchUserContents = async (reset = false) => {
     try {
-      const blob = await api.downloadPdf(contentId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `document-${contentId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      setLoading(true);
+      setError(null);
+
+      const currentPage = reset ? 1 : page;
+      if (reset) {
+        setPage(1);
+        setContents([]);
+      }
+
+      const response = await api.getUserContents({
+        userId: id,
+        contentType: activeFilter,
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+      
+      // Handle array response format
+      const items = Array.isArray(response) ? response : [];
+      
+      // Map id to _id for consistency
+      const mappedItems = items.map(item => ({
+        ...item,
+        _id: item.id
+      }));
+
+      // Estimate if there are more items based on the response length
+      const hasMoreItems = items.length === ITEMS_PER_PAGE;
+      
+      setHasMore(hasMoreItems);
+      
+      if (reset) {
+        setContents(mappedItems);
+      } else {
+        setContents(prev => [...prev, ...mappedItems]);
+      }
     } catch (error) {
-      toast.error('Failed to download PDF');
+      console.error('Error fetching user contents:', error);
+      
+      // Handle specific error cases
+      if (error.message.includes('Authentication failed') || error.message.includes('401')) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to view this content",
+          variant: "destructive"
+        });
+        router.push('/login');
+        return;
+      }
+      
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        toast({
+          title: "User Not Found",
+          description: "The requested user profile does not exist",
+          variant: "destructive"
+        });
+        router.push('/');
+        return;
+      }
+      
+      setError('Failed to load user contents. Please try again later.');
+      toast({
+        title: "Error",
+        description: "Failed to load user contents. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (isLoading) {
+  const loadMore = () => {
+    if (!loading && hasMore) {
+      setPage(prev => prev + 1);
+      fetchUserContents(false);
+    }
+  };
+
+  if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button
+            onClick={() => fetchUserContents(true)}
+            variant="secondary"
+            className="mr-2"
+          >
+            Retry
+          </Button>
+          <Button
+            onClick={() => router.push('/')}
+            variant="outline"
+          >
+            Go Home
+          </Button>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
+  const handleFilterChange = (type) => {
+    setActiveFilter(type);
+  };
+
+  if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-2xl font-bold mb-4">User not found</h1>
-          <p className="text-muted-foreground">
-            The user you`&apos`re looking for doesn`&apos;`t exist.
-          </p>
+        <div className="text-center text-red-600">
+          <p>{error}</p>
+          <Button
+            onClick={() => loadContents(true)}
+            className="mt-4"
+            variant="secondary"
+          >
+            Retry
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <Card className="p-6 mb-8">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">{user.name}</h1>
-              <p className="text-muted-foreground">{user.email}</p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Role:</span>
-                <span className="font-medium">{user.role}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Joined:</span>
-                <span className="font-medium">
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Email Verified:</span>
-                <span className="font-medium">
-                  {user.isVerified ? 'Yes' : 'No'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total PDFs:</span>
-                <span className="font-medium">{contents.length}</span>
-              </div>
-            </div>
-          </div>
-        </Card>
+    <div className="container px-4 py-8 mx-auto">
+      <div className="mb-8">
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="mb-4"
+        >
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold">User Profile</h1>
+        {user && (
+          <p className="text-muted-foreground mt-1">
+            {user.name} ({user.email})
+          </p>
+        )}
+      </div>
 
-        <h2 className="text-2xl font-semibold mb-4">Generated PDFs</h2>
-        <div className="grid gap-4">
-          {contents.map((content) => (
-            <Card key={content.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">{content.title || 'Untitled'}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Created on {new Date(content.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <Button onClick={() => handleDownload(content.id)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-              </div>
-            </Card>
+      <div className="container px-4 py-8">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Content History</h1>
+          <p className="text-muted-foreground mt-1">
+            {totalItems} {totalItems === 1 ? 'item' : 'items'} loaded
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {CONTENT_TYPES.map((type) => (
+            <Button
+              key={type.value || 'all'}
+              variant={activeFilter === type.value ? "default" : "outline"}
+              onClick={() => handleFilterChange(type.value)}
+              className="min-w-[80px]"
+            >
+              {type.label}
+            </Button>
           ))}
-          {contents.length === 0 && (
-            <p className="text-center text-muted-foreground">
-              No PDFs generated yet.
-            </p>
-          )}
         </div>
       </div>
+
+      {loading && contents.length === 0 ? (
+        <div className="flex items-center justify-center min-h-[200px]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : contents.length === 0 ? (
+        <div className="text-center">
+          <p className="text-muted-foreground">
+            {activeFilter 
+              ? `No ${activeFilter.toLowerCase()} content found`
+              : 'No content history found'
+            }
+          </p>
+        </div>
+      ) : (
+        <>
+          <ContentHistory contents={contents} admin={true} />
+          
+          {hasMore && (
+            <div className="mt-8 text-center">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={loading}
+                className="min-w-[200px]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  'Load More'
+                )}
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
     </div>
   );
 } 

@@ -79,10 +79,10 @@ export default function SignupPage() {
             <Icons.logo className="mr-2 h-6 w-6" />
             Kothakoli
           </div>
-          <div className="relative z-20 mt-auto">
+          <div className="relative z-20 mt-auto mb-16">
             <blockquote className="space-y-2">
               <p className="text-lg">
-                &quot;Join our community of storytellers and bring your imagination to life with AI-powered story generation. Perfect for parents, teachers, and creative minds.&quot;
+                &quot;Join our community of people who love to write stories in their mother tongue. &quot;
               </p>
               <footer className="text-sm">The Kothakoli Team</footer>
             </blockquote>

@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import AudioPlayer from "./audio-player";
 
-export default function ContentHistory({ contents, onDelete }) {
+export default function ContentHistory({ contents, onDelete = () => {} , admin = false}) {
   const [expandedItems, setExpandedItems] = useState({});
   const [audioBlobs, setAudioBlobs] = useState({});
   const [loadingAudio, setLoadingAudio] = useState({});
@@ -162,7 +162,7 @@ export default function ContentHistory({ contents, onDelete }) {
               >
                 <DownloadIcon className="h-4 w-4" />
               </Button>
-              <Button
+              {!admin && <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleDelete(content.id)}
@@ -170,7 +170,7 @@ export default function ContentHistory({ contents, onDelete }) {
                 title="Delete"
               >
                 <TrashIcon className="h-4 w-4" />
-              </Button>
+              </Button>}
             </div>
           </CardHeader>
 

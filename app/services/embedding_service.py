@@ -159,8 +159,8 @@ class EmbeddingService:
             self.embedding_storage[cache_id] = embedding
             
             # Save to files immediately
-            self._save_cache()
-            self._save_embeddings()
+            # self._save_cache()
+            # self._save_embeddings()
             
             logger.info(f"Created and saved cache with ID: {cache_id}")
             return cache_id

@@ -33,6 +33,7 @@ numpy
 pydub
 pytesseract==0.3.10
 gTTS
+rapidfuzz
 
 # PDF generation
 reportlab

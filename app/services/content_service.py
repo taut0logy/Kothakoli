@@ -88,6 +88,26 @@ class ContentService:
             logger.error(f"Error fetching content: {str(e)}")
             raise
 
+    async def get_all_users(self) -> List[Dict]:
+        """Get all users."""
+        try:
+            async with db.get_client() as client:
+                users = await client.user.find_many()
+                return users
+        except Exception as e:
+            logger.error(f"Error fetching users: {str(e)}")
+            raise
+
+    async def get_all_content(self) -> List[Dict]:
+        """Get all content."""
+        try:
+            async with db.get_client() as client:
+                content = await client.generatedcontent.find_many()
+                return content
+        except Exception as e:
+            logger.error(f"Error fetching content: {str(e)}")
+            raise
+
     async def get_content_by_type(self, content_type: str, limit: int = 50, offset: int = 0, isPublic: Optional[bool] = None) -> List[Dict]:
         """Get content by type with optional filtering by public."""
         try:

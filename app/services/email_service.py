@@ -73,4 +73,24 @@ class EmailService:
             logger.error(f"Failed to send admin credentials: {str(e)}")
             raise
 
+    async def send_password_reset_email(self, email: str, name: str, reset_token: str) -> None:
+        """Send a password reset email to a user."""
+        try:
+            subject = "Password Reset Request"
+            template_body = {
+                "name": name,
+                "reset_token": reset_token
+            }
+
+            await self._send_email(
+                email_to=email,
+                subject=subject,
+                body="",  # Body will be provided by template
+                template_name="password_reset.html",
+                template_body=template_body
+            )
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {str(e)}")
+            raise
+
 email_service = EmailService() 

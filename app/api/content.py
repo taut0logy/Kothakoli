@@ -26,6 +26,21 @@ class ContentResponse(BaseModel):
             datetime: lambda v: v.isoformat()
         }
 
+        
+@router.get("/all", response_model=List[ContentResponse])
+async def get_all_content(
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get all content."""
+    try:
+        contents = await content_service.get_all_content()
+        return contents
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
 @router.get("/", response_model=List[ContentResponse])
 async def get_user_content(
     content_type: Optional[str] = Query(None, description="Filter by content type (CHAT, PDF, VOICE, FILE)"),

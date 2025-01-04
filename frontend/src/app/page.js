@@ -11,6 +11,7 @@ import { useDebounce } from '@/hooks/use-debounce'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import SearchUser from '@/components/search-user'
+import Homepage from './homepage'
 
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -66,11 +67,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
-      <div className="w-full mb-8">
-        <SearchUser />
-      </div>
-    </div>
+    <Homepage/>
+    // <div className="container mx-auto px-4 py-8">
+    //   <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+    //   <div className="w-full mb-8">
+    //     <SearchUser />
+    //   </div>
+    // </div>
   )
 } 

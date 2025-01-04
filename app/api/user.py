@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     _id: str
     name: str | None = None
     email: str
+    
 
     class Config:
         from_attributes = True

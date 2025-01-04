@@ -7,6 +7,8 @@ import { useUser } from '@/hooks/use-user';
 
 const AuthContext = createContext({});
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
 const publicPaths = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password'];
 
 export function AuthProvider({ children }) {
@@ -15,7 +17,7 @@ export function AuthProvider({ children }) {
 
   const signup = useCallback(async (userData) => {
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +60,7 @@ export function AuthProvider({ children }) {
       formData.append('username', email);
       formData.append('password', password);
 
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         body: formData,
       });
@@ -94,7 +96,7 @@ export function AuthProvider({ children }) {
     try {
       const token = localStorage.getItem('token');
       if (token) {
-        const response = await fetch('/api/auth/logout', {
+        const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -122,7 +124,7 @@ export function AuthProvider({ children }) {
   const updateProfile = useCallback(async (userData) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +150,7 @@ export function AuthProvider({ children }) {
   const deleteAccount = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -172,7 +174,7 @@ export function AuthProvider({ children }) {
 
   const forgotPassword = useCallback(async (email) => {
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,7 +207,7 @@ export function AuthProvider({ children }) {
 
   const resetPassword = useCallback(async (token, newPassword) => {
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -250,6 +252,10 @@ export function AuthProvider({ children }) {
     if (!user && !isPublicPath) {
       router.push('/login');
     } else if (user && isPublicPath) {
+      router.push('/');
+    }
+
+    if(user?.role !== 'ADMIN' && currentPath.includes('admin')) {
       router.push('/');
     }
   }, [user, isLoading, router]);

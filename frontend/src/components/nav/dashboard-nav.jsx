@@ -35,13 +35,24 @@ const DashboardNav = () => {
 
   const navigationItems = [
     {
-      title: "Dashboard",
+      title: "Services",
       items: [
         {
-          title: "Chat",
+          title: "General Chat",
           href: "/chat",
           description: "Start a new chat conversation"
         },
+        {
+          title: "Banglish Chatbot",
+          href: "/chatbot",
+          description: "Chat in Banglish or Bangla"
+        },
+        {
+          title: "Banglish Translator",
+          href: "/banglish-converter",
+          description: "Translate Banglish to Bangla and create stories"
+        },
+
         {
           title: "History",
           href: "/history",
@@ -50,10 +61,10 @@ const DashboardNav = () => {
       ]
     },
     {
-      title: "Account",
+      title: "Profile",
       items: [
         {
-          title: "Profile",
+          title: "Account",
           href: "/profile",
           description: "Manage your account settings"
         },
@@ -65,25 +76,6 @@ const DashboardNav = () => {
       ]
     }
   ]
-
-  // Add admin-specific items if user is admin
-  if (user?.role === 'ADMIN') {
-    navigationItems.push({
-      title: "Admin",
-      items: [
-        {
-          title: "Admin Dashboard",
-          href: "/admin",
-          description: "View admin dashboard"
-        },
-        {
-          title: "Create Admin",
-          href: "/admin/create",
-          description: "Create new admin users"
-        }
-      ]
-    })
-  }
 
   return (
     <div className="border-b">
@@ -124,12 +116,12 @@ const DashboardNav = () => {
 
         {/* Desktop Navigation Menu */}
         <div className="hidden lg:flex lg:flex-1">
-          {user && <NavigationMenu>
+          {user && <NavigationMenu className="z-[1000]">
             <NavigationMenuList>
               {navigationItems.map((section) => (
                 <NavigationMenuItem key={section.title}>
                   <NavigationMenuTrigger>{section.title}</NavigationMenuTrigger>
-                  <NavigationMenuContent>
+                  <NavigationMenuContent className="z-[1000]">
                     <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2">
                       {section.items.map((item) => (
                         <li key={item.href}>

@@ -8,13 +8,8 @@ import { ChatMessage } from "@/components/chat-message";
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { Database } from "lucide-react";
-import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
-import SearchUser from '@/components/search-user';
 
-export default function AdminDashboard() {
-  const router = useRouter();
-
+export default function ChatHistory() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,25 +43,14 @@ export default function AdminDashboard() {
       toast.error(error.message || 'Failed to cache conversation');
     }
   };
- 
-  const handleCreateAdmin = () => {
-    router.push('/admin/create');
-  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <Button onClick={handleCreateAdmin}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Admin
-          </Button>
-        </div>
-
-        <div className="w-full mb-8 ">
-        <SearchUser />
-        <Card className="mt-4">
+    <div className="container max-w-4xl mx-auto p-4">
+      <Card>
         <CardHeader>
           <CardTitle>Conversation History</CardTitle>
         </CardHeader>
@@ -103,8 +87,6 @@ export default function AdminDashboard() {
           </ScrollArea>
         </CardContent>
       </Card>
-        </div>
-      </div>
     </div>
   );
-} 
+}

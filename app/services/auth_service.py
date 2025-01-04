@@ -29,7 +29,7 @@ class AuthService:
             return None
         
 
-    async def create_user(self, email: str, password: str, name: str) -> Dict:
+    async def create_user(self, email: str, password: str, name: str, role: str="USER") -> Dict:
         """Create a new user."""
         try:
             async with db.get_client() as client:
@@ -47,14 +47,16 @@ class AuthService:
                     data={
                         "email": email,
                         "password": hashed_password,
-                        "name": name
+                        "name": name,
+                        "role": role
                     }
                 )
 
                 return {
                     "id": user.id,
                     "email": user.email,
-                    "name": user.name
+                    "name": user.name,
+                    "role": user.role
                 }
 
         except Exception as e:
@@ -152,7 +154,9 @@ class AuthService:
                     "id": user.id,
                     "email": user.email,
                     "name": user.name,
-                    "has_api_key": bool(user.apiKey)
+                    "has_api_key": bool(user.apiKey),
+                    "role": user.role,
+                    "created_at": user.createdAt
                 }
 
         except Exception as e:

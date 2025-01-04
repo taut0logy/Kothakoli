@@ -1,6 +1,16 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export const api = {
+
+  async createAdminUser(data) {
+    const response = await fetch(`${API_BASE_URL}/api/admin/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+  },
   // Chat endpoints
   async sendMessage(message, modelName = null) {
     const response = await fetch(`${API_BASE_URL}/api/chat/text`, {
@@ -445,7 +455,7 @@ export const api = {
       console.error('Error caching conversation:', error);
       throw error;
     }
-  }
+  },
 
   async convertToBengali(text) {
     const response = await fetch(`${API_BASE_URL}/api/convert`, {
