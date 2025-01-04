@@ -10,25 +10,25 @@ services:
       - ./storage:/app/storage
       - ./logs:/app/logs
     environment:
-      - MONGODB_URL=mongodb://mongodb:27017/kothakoli
+      - MONGODB_URL="mongodb+srv://raufun:1234@cluster0.mimny.mongodb.net/kothakoli?retryWrites=true&w=majority&appName=Cluster0"
       - JWT_SECRET=your_jwt_secret
       - FRONTEND_URL=http://localhost:3000
       - APP_NAME=Kothakoli
       - APP_VERSION=1.0.0
-      - CORS_ORIGINS=["http://localhost:3000"]
+      - CORS_ORIGINS=["*"]
       - CORS_METHODS=["*"]
       - CORS_HEADERS=["*"]
       - API_PREFIX=/api
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=587
-      - SMTP_USERNAME=your_email@gmail.com
-      - SMTP_PASSWORD=your_app_password
+      - SMTP_USERNAME=raufun.ahsan@gmail.com
+      - SMTP_PASSWORD="gzci ncuu yyld jixa"
       - SMTP_FROM_EMAIL=noreply@kothakoli.ai
       - ENCRYPTION_KEY=your_encryption_key
       - ENVIRONMENT=development
       - DEBUG=true
       - GOOGLE_API_KEY=your_google_api_key
-      
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
