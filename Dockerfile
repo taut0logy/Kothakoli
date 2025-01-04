@@ -33,12 +33,12 @@ COPY . .
 RUN mkdir -p storage/data storage/pdfs storage/temp storage/contributions storage/temp logs
 
 # Create script to generate .env file
-# RUN echo '#!/bin/bash\n\
-# echo "Creating .env file..."\n\
-# env | grep -E "^(MONGODB_URL|REDIS_URL|ENVIRONMENT|DEBUG|GOOGLE_API_KEY|JWT_SECRET|SMTP_|API_|FRONTEND_URL|ENCRYPTION_KEY|CORS_|APP_)" > .env\n\
-# echo ".env file created with $(wc -l < .env) variables"\n\
-# exec "$@"' > /app/docker-entrypoint.sh && \
-#     chmod +x /app/docker-entrypoint.sh
+RUN echo '#!/bin/bash\n\
+echo "Creating .env file..."\n\
+env | grep -E "^(MONGODB_URL|REDIS_URL|ENVIRONMENT|DEBUG|GOOGLE_API_KEY|JWT_SECRET|SMTP_|API_|FRONTEND_URL|ENCRYPTION_KEY|CORS_|APP_)" > .env\n\
+echo ".env file created with $(wc -l < .env) variables"\n\
+exec "$@"' > /app/docker-entrypoint.sh && \
+    chmod +x /app/docker-entrypoint.sh
 
 # Set permissions
 RUN chmod -R 755 storage logs
@@ -55,6 +55,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Start command
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"] 
