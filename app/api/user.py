@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Dict, List
 from ..services.auth_service import auth_service
 from ..middleware.auth import auth_required
-from ..middleware.role_checker import require_user
+from ..middleware.role_checker import require_user, check_roles
 import logging
 from pydantic import BaseModel
 from datetime import datetime
-
+from app.api.auth import get_current_user
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -54,7 +54,7 @@ async def search_users(
     query: str = Query(..., min_length=1),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
-    current_user: Dict = Depends(auth_required)
+    current_user: Dict = Depends(get_current_user)
 ) -> Dict:
     """Search users by name with pagination."""
     try:
@@ -83,7 +83,7 @@ async def search_users(
 @require_user
 async def get_user_contents(
     user_id: str,
-    current_user: Dict = Depends(auth_required)
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get user's generated content."""
     try:
@@ -97,4 +97,11 @@ async def get_user_contents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get user contents"
-        ) 
+        )
+
+@router.get("/profile")
+async def get_profile(
+    current_user: Dict = Depends(require_user)
+):
+    """Get user profile."""
+    return current_user 

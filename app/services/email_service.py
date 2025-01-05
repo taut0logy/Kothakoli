@@ -3,6 +3,7 @@ from typing import Optional
 from ..core.config import settings
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pathlib import Path
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -76,19 +77,28 @@ class EmailService:
     async def send_password_reset_email(self, email: str, name: str, reset_token: str) -> None:
         """Send a password reset email to a user."""
         try:
+            logger.info(f"Sending password reset email to {email}")
             subject = "Password Reset Request"
+            reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+            
             template_body = {
-                "name": name,
-                "reset_token": reset_token
+                "username": name,  # Changed from name to username to match template
+                "reset_link": reset_link,
+                "logo_url": f"{settings.FRONTEND_URL}/logo.png",  # Add logo URL
+                "contact_url": f"{settings.FRONTEND_URL}/contact",
+                "privacy_url": f"{settings.FRONTEND_URL}/privacy",
+                "terms_url": f"{settings.FRONTEND_URL}/terms",
+                "current_year": datetime.datetime.now().year
             }
 
             await self._send_email(
                 email_to=email,
                 subject=subject,
-                body="",  # Body will be provided by template
+                body="",
                 template_name="password_reset.html",
                 template_body=template_body
             )
+            logger.info(f"Password reset email sent to {email}")
         except Exception as e:
             logger.error(f"Failed to send password reset email: {str(e)}")
             raise

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, Security
 from typing import Dict, List
 from ..services.auth_service import auth_service
 from ..services.email_service import email_service
 from ..middleware.auth import auth_required
-from ..middleware.role_checker import require_admin
+from ..middleware.role_checker import require_admin, check_roles
 from ..models.auth import CreateAdminRequest
 from ..api.auth import get_current_user
 import logging
@@ -29,12 +29,11 @@ async def check_admin(current_user: Dict = Depends(get_current_user)) -> Dict:
 
 @router.get("/users")
 async def get_all_users(
+    current_user: Dict = Depends(require_admin),
     page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=50),
-    current_user: Dict = Depends(get_current_user)
+    limit: int = Query(10, ge=1, le=50)
 ) -> Dict:
     """Get all users with their content counts."""
-    await check_admin(current_user)
     try:
         skip = (page - 1) * limit
         users, total = await auth_service.get_all_users(skip=skip, limit=limit)

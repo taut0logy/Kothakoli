@@ -52,9 +52,10 @@ export default function ContentHistory({ contents, onDelete = () => {} , admin =
 
       if (content.type === "PDF" || content.type === "BENGALI_STORY") {
         // For PDF type, download the actual PDF file
-        const response = await api.downloadPdf(content.filename);
+        const query = content.filename || content.file_id;
+        const response = await api.downloadPdf(query);
         blob = new Blob([response], { type: "application/pdf" });
-        filename = content.filename || `${content.title}.pdf`;
+        filename = `${content.title}.pdf`;
         contentType = "application/pdf";
       } else {
         // For other types, handle markdown or text download
@@ -102,7 +103,7 @@ export default function ContentHistory({ contents, onDelete = () => {} , admin =
       setLoadingAudio((prev) => ({ ...prev, [content.id]: true }));
 
       let textToConvert;
-      if (content.type === "PDF") {
+      if (content.type === "PDF" || content.type === "BENGALI_STORY") {
         textToConvert = content.content;
       } else {
         textToConvert = expandedItems[content.id]
@@ -144,7 +145,7 @@ export default function ContentHistory({ contents, onDelete = () => {} , admin =
               <CardDescription>{formatDate(content.createdAt)}</CardDescription>
             </div>
             <div className="flex space-x-2">
-              {content.type !== "PDF" && (
+              {content.type !== "PDF" && content.type !== "BENGALI_STORY" && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -158,7 +159,7 @@ export default function ContentHistory({ contents, onDelete = () => {} , admin =
                 variant="ghost"
                 size="icon"
                 onClick={() => handleDownload(content)}
-                title={`Download as ${content.type === "PDF" ? "PDF" : "Text"}`}
+                title={`Download as ${(content.type === "PDF" || content.type === "BENGALI_STORY") ? "PDF" : "Text"}`}
               >
                 <DownloadIcon className="h-4 w-4" />
               </Button>

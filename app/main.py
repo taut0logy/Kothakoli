@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 from .api import auth, chat, files, pdf, user, admin, content, search, convert, chatbot
 from .core.config import settings
+from app.core.tasks import start_background_tasks
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +40,7 @@ app.include_router(admin.router, prefix=settings.API_PREFIX)
 app.include_router(search.router, prefix=settings.API_PREFIX)
 app.include_router(convert.router, prefix=settings.API_PREFIX)
 app.include_router(chatbot.router, prefix=settings.API_PREFIX)
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unhandled exceptions."""
@@ -53,4 +55,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "version": settings.APP_VERSION} 
+    return {"status": "healthy", "version": settings.APP_VERSION}
+
+@app.on_event("startup")
+async def startup_event():
+    background_tasks = BackgroundTasks()
+    start_background_tasks(background_tasks) 

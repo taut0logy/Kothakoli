@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import Any, Optional
-import redis.asyncio as redis
+import redis
 from ..core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -9,7 +9,12 @@ logger = logging.getLogger(__name__)
 class CacheService:
     def __init__(self):
         try:
-            self.redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
+            self.redis = redis.Redis(
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                password=settings.REDIS_PASSWORD,
+                ssl=True
+            )
             logger.info("Cache Service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Redis connection: {str(e)}")
@@ -30,8 +35,6 @@ class CacheService:
         """Set a value in cache with optional TTL."""
         try:
             data = json.dumps(value)
-            if ttl is None:
-                ttl = settings.CACHE_TTL
             await self.redis.set(key, data, ex=ttl)
             return True
         except Exception as e:

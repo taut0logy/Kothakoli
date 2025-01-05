@@ -280,7 +280,7 @@ class PDFService:
             buffer.close()
 
             # Generate unique file ID and save
-            file_id = f"{uuid.uuid4()}.pdf"
+            file_id = f"{title}_{uuid.uuid4()}.pdf"
             pdf_path = os.path.join(settings.PDF_STORAGE_PATH, file_id)
             os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
             
@@ -305,13 +305,11 @@ class PDFService:
             )
 
             return {
-                "success": True,
-                "data": {
                     "file_id": file_id,
+                    "filename": file_id,
                     "path": pdf_path,
                     "url": file_url,
                     "title": title
-                }
             }
 
         except Exception as e:

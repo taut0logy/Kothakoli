@@ -38,7 +38,7 @@ const DashboardNav = () => {
       title: "Services",
       items: [
         {
-          title: "General Chat",
+          title: "Chat with Kothakoli",
           href: "/chat",
           description: "Start a new chat conversation"
         },
@@ -95,6 +95,11 @@ const DashboardNav = () => {
               </SheetDescription>
             </SheetHeader>
             <div className="flex flex-col gap-4 mt-4">
+              <Link href="/">
+                <Button variant="ghost" className="space-x-2">  
+                  Kothakoli
+                </Button>
+              </Link>
               {navigationItems.map((section) => (
                 <div key={section.title} className="space-y-2">
                   <h3 className="font-medium text-sm">{section.title}</h3>
@@ -118,6 +123,13 @@ const DashboardNav = () => {
         <div className="hidden lg:flex lg:flex-1">
           {user && <NavigationMenu className="z-[1000]">
             <NavigationMenuList>
+              <NavigationMenuItem>
+                <Link href="/">
+                  <Button variant="ghost" className="space-x-2">
+                    Kothakoli
+                  </Button>
+                </Link>
+              </NavigationMenuItem>
               {navigationItems.map((section) => (
                 <NavigationMenuItem key={section.title}>
                   <NavigationMenuTrigger>{section.title}</NavigationMenuTrigger>

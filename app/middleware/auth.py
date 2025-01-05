@@ -3,6 +3,7 @@ from fastapi import Request, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.services.auth_service import auth_service
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class JWTBearer(HTTPBearer):
                 )
 
             # Check if email verification is required and user is verified
-            if self.require_verified and not user.isVerified:
+            if self.require_verified and not user["isVerified"]:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Email verification required"
@@ -37,6 +38,7 @@ class JWTBearer(HTTPBearer):
 
             # Attach user to request state
             request.state.user = user
+            request.state.token = credentials.credentials
             return credentials
 
         except HTTPException:
@@ -51,4 +53,4 @@ class JWTBearer(HTTPBearer):
 # Create instances for different authentication requirements
 auth_required = JWTBearer(require_verified=True)
 auth_optional = JWTBearer(auto_error=False, require_verified=True)
-unverified_allowed = JWTBearer(require_verified=False) 
+unverified_allowed = JWTBearer(require_verified=False)

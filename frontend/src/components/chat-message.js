@@ -1,9 +1,10 @@
-import React from "react";
+'use client'
+
+import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { Highlight, themes } from "prism-react-renderer";
-import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -11,15 +12,23 @@ import { Button } from "@/components/ui/button";
 import { SpeakerLoudIcon } from "@radix-ui/react-icons";
 import AudioPlayer from "@/components/audio-player";
 
-
 const CodeBlock = ({ language, code }) => {
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="rounded-md overflow-hidden my-2 bg-muted">
@@ -82,14 +91,12 @@ const MarkdownComponents = {
     );
   },
   p: ({ children }) => {
-    // Check if children contains a block-level element
     const hasBlockElement = React.Children.toArray(children).some(
       (child) =>
         React.isValidElement(child) &&
         ["div", "pre", "ul", "ol", "blockquote"].includes(child.type)
     );
 
-    // If it contains a block element, render without p wrapper
     return hasBlockElement ? (
       <>{children}</>
     ) : (
@@ -107,14 +114,12 @@ const MarkdownComponents = {
     </ol>
   ),
   li: ({ children }) => {
-    // Check if children contains a block-level element
     const hasBlockElement = React.Children.toArray(children).some(
       (child) =>
         React.isValidElement(child) &&
         ["div", "pre", "ul", "ol", "p", "blockquote"].includes(child.type)
     );
 
-    // If it contains a block element, render without additional p wrapper
     return (
       <li className="leading-7">
         {hasBlockElement ? children : <p className="mb-0">{children}</p>}
@@ -169,6 +174,11 @@ const MarkdownComponents = {
 export function ChatMessage({ message, transcription = null, isBot }) {
   const [audioBlob, setAudioBlob] = useState(null);
   const [loadingAudio, setLoadingAudio] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleTextToSpeech = async () => {
     try {
@@ -184,29 +194,20 @@ export function ChatMessage({ message, transcription = null, isBot }) {
 
       const blob = await api.textToSpeech(textToConvert);
       setAudioBlob(blob);
-
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast.error("Error converting text to speech");
     } finally {
       setLoadingAudio(false);
     }
   };
 
-  return (
-    <div
-      className={cn(
-        "flex w-full items-start gap-4 rounded-lg p-4",
-        isBot ? "bg-muted" : "bg-primary/10"
-      )}
-    >
-      <span className="font-semibold min-w-[50px]">
-        {isBot ? "🤖 AI" : "👤 You"}:
-      </span>
-      <div className="flex-1 space-y-2 overflow-hidden prose prose-sm dark:prose-invert max-w-none">
-        {isBot && audioBlob && (
-          <AudioPlayer audioBlob={audioBlob} />
-        )}
+  const renderAudioControls = () => {
+    if (!mounted) return null;
+
+    return (
+      <>
+        {isBot && audioBlob && <AudioPlayer audioBlob={audioBlob} />}
         {isBot && !audioBlob && (
           <Button
             variant="ghost"
@@ -222,6 +223,22 @@ export function ChatMessage({ message, transcription = null, isBot }) {
             )}
           </Button>
         )}
+      </>
+    );
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-start gap-4 rounded-lg p-4",
+        isBot ? "bg-muted" : "bg-primary/10"
+      )}
+    >
+      <span className="font-semibold min-w-[50px]">
+        {isBot ? "🤖 AI" : "👤 You"}:
+      </span>
+      <div className="flex-1 space-y-2 overflow-hidden prose prose-sm dark:prose-invert max-w-none">
+        {renderAudioControls()}
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={MarkdownComponents}

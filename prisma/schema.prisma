@@ -38,56 +38,15 @@ model User {
   apiKey        String?
   modelName     String?   @default("gemini-1.5-flash")
   isVerified    Boolean   @default(false)
-  verifiedAt    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   role          Role      @default(USER)
-  stories       Story[]
-  chatMessages  ChatMessage[]
-  files         File[]
   contents      GeneratedContent[]
-  emailVerified Boolean   @default(false)
-}
-
-model Story {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  model     String
-  title     String
-  content   String
-  prompt    String
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model ChatMessage {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  model     String
-  message   String
-  content   String
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model File {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  model     String
-  filename  String
-  content   String
-  response  String
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model GeneratedContent {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
   type        ContentType
-  isPublic    Boolean     @default(true)
   title       String
   isPublic    Boolean?     @default(true)
   filename    String?
@@ -100,3 +59,15 @@ model GeneratedContent {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 }
+
+model Token {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String      @db.ObjectId
+  user        User        @relation(fields: [userId], references: [id])
+  token       String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  expiresAt   DateTime
+}
+
+

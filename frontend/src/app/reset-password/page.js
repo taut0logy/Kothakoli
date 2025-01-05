@@ -15,7 +15,7 @@ function ResetPasswordForm() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { handleFormError } = useFormError();
+  const { handleError } = useFormError();
   const router = useRouter();
 
   const handleSubmit = async (e) => {
@@ -33,7 +33,7 @@ function ResetPasswordForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ token, new_password: password }),
       });
 
       if (!response.ok) {
@@ -43,7 +43,7 @@ function ResetPasswordForm() {
       toast.success('Password reset successful');
       router.push('/login');
     } catch (error) {
-      handleFormError(error);
+      handleError(error);
     } finally {
       setIsLoading(false);
     }

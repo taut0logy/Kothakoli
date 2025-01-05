@@ -187,12 +187,16 @@ class ChatService:
             if text.startswith("text="):
                 text = text.replace("text=", "", 1).strip()
 
+            # remove any quotation marks
+            text = text.replace('"', '')
+            text = text.replace("'", "")
+
             # Create an in-memory bytes buffer
             audio_buffer = io.BytesIO()
             
             try:
                 # Convert text to speech
-                tts = gTTS(text=text, lang='en', slow=False)
+                tts = gTTS(text=text, lang='bn', slow=False)
                 logger.info("Text converted to speech")
                 
                 # Save to buffer

@@ -1,122 +1,74 @@
 from typing import List, Callable
-from functools import wraps
-from fastapi import HTTPException, status, Request
+from fastapi import HTTPException, status, Request, Depends
 from ..core.config import settings
+from .auth import JWTBearer
 import logging
-import json
-from datetime import datetime
+from jose import jwt
+from functools import wraps
 
 logger = logging.getLogger(__name__)
 
-def check_role(allowed_roles: List[str]) -> Callable:
-    """Decorator to check if user has required role."""
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            start_time = datetime.now()
-            log_data = {
-                "timestamp": start_time.isoformat(),
-                "function": func.__name__,
-                "allowed_roles": allowed_roles,
-                "status": "started"
-            }
+class RoleChecker:
+    """Role checker middleware that verifies roles from JWT token."""
+    
+    def __init__(self, allowed_roles: List[str]):
+        self.allowed_roles = allowed_roles
+        self.auth_scheme = JWTBearer()
 
-            # Find the request object
-            request = None
-            for arg in args:
-                if isinstance(arg, Request):
-                    request = arg
-                    break
-            
-            if not request:
-                request = kwargs.get('request')
+    def verify_role(self, token: str) -> bool:
+        """Verify role from JWT token."""
+        try:
+            # Decode token without verifying expiration (that's handled by auth middleware)
+            payload = jwt.decode(
+                token,
+                settings.JWT_SECRET,
+                algorithms=[settings.JWT_ALGORITHM]
+            )
+            user_role = payload.get('role')
+            return user_role in self.allowed_roles
+        except Exception as e:
+            logger.error(f"Role verification failed: {str(e)}")
+            return False
 
+    def __call__(self) -> Callable:
+        """Create a dependency that checks user roles."""
+        async def check_role(request: Request) -> dict:
             try:
-                if not request:
-                    logger.error(f"Role check failed: {json.dumps({**log_data, 'error': 'Request object not found'})}")
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Could not validate role - Request object not found"
-                    )
-
-                # Get user from request state
-                user = getattr(request.state, 'user', None)
-                
-                # Log request details
-                log_data.update({
-                    "path": str(request.url),
-                    "method": request.method,
-                    "client_ip": request.client.host if request.client else None,
-                    "user_id": user.get('id') if user else None,
-                    "user_email": user.get('email') if user else None,
-                    "user_role": user.get('role') if user else None
-                })
-
-                logger.info(f"Role check started: {json.dumps(log_data)}")
-                
-                if not user:
-                    logger.warning(f"Authentication failed: {json.dumps({**log_data, 'error': 'User not authenticated'})}")
+                # Get token from request header
+                auth_header = request.headers.get('Authorization')
+                if not auth_header or not auth_header.startswith('Bearer '):
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Not authenticated"
+                        detail="Missing or invalid authorization header"
                     )
 
-                # Check if user role is in allowed roles
-                user_role = user.get('role')
-                if not user_role or user_role not in allowed_roles:
-                    logger.warning(f"Permission denied: {json.dumps({**log_data, 'error': 'Invalid role', 'user_role': user_role})}")
+                token = auth_header.split(' ')[1]
+                if not self.verify_role(token):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Not enough permissions. Required roles: {', '.join(allowed_roles)}"
+                        detail=f"Not enough permissions. Required roles: {', '.join(self.allowed_roles)}"
                     )
 
-                # Log successful role check
-                logger.info(f"Role check passed: {json.dumps({**log_data, 'status': 'success'})}")
+                return request.state.user
 
-                # Execute the protected function
-                response = await func(*args, **kwargs)
-
-                # Log completion
-                end_time = datetime.now()
-                duration = (end_time - start_time).total_seconds()
-                logger.info(f"Request completed: {json.dumps({
-                    **log_data,
-                    'status': 'completed',
-                    'duration_seconds': duration
-                })}")
-
-                return response
-
-            except HTTPException as http_ex:
-                # Log HTTP exceptions
-                logger.warning(f"HTTP Exception in role check: {json.dumps({
-                    **log_data,
-                    'status': 'failed',
-                    'error_type': 'HTTPException',
-                    'status_code': http_ex.status_code,
-                    'detail': str(http_ex.detail)
-                })}")
+            except HTTPException:
                 raise
-
             except Exception as e:
-                # Log unexpected exceptions
-                logger.error(f"Unexpected error in role check: {json.dumps({
-                    **log_data,
-                    'status': 'failed',
-                    'error_type': type(e).__name__,
-                    'error_message': str(e)
-                })}", exc_info=True)
+                logger.error(f"Role check failed: {str(e)}")
                 raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Internal server error during role check"
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Permission denied"
                 )
+        
+        return Depends(check_role)
 
-        return wrapper
-    return decorator
+# Create role checker instances
+require_admin = RoleChecker(['ADMIN'])()
+require_user = RoleChecker(['USER', 'ADMIN'])()
 
-# Role checker instances
-require_admin = check_role(['ADMIN'])
-require_user = check_role(['USER', 'ADMIN'])  # Admin can access user routes too
+def check_roles(allowed_roles: List[str]):
+    """Create a role checker dependency."""
+    return RoleChecker(allowed_roles)()
 
 # Example usage in an endpoint:
 """

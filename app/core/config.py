@@ -37,7 +37,9 @@ class Settings(BaseSettings):
     MONGODB_URL: str
     
     # Redis settings
-    REDIS_URL: str
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_PASSWORD: str
     REDIS_TTL: int = 3600  # 1 hour
     
     # File upload settings
