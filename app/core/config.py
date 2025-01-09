@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str
     
     # Server settings
     HOST: str

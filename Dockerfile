@@ -43,24 +43,14 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
-# Create script to generate .env file and handle Prisma
-RUN echo '#!/bin/bash\n\
-echo "Creating .env file..."\n\
-env | grep -E "^(MONGODB_URL|REDIS_HOST|REDIS_PORT|REDIS_PASSWORD|ENVIRONMENT|DEBUG|GOOGLE_API_KEY|JWT_SECRET|SMTP_HOST|SMTP_PORT|SMTP_USER|SMTP_PASSWORD|API_URL|FRONTEND_URL|ENCRYPTION_KEY|CORS_ORIGINS|APP_NAME|HOST|PORT)" > .env\n\
-echo ".env file created with $(wc -l < .env) variables"\n\
-echo "Generating Prisma client..."\n\
-prisma generate\n\
-exec "$@"' > /app/docker-entrypoint.sh && \
-    chmod +x /app/docker-entrypoint.sh
+RUN prisma generate
 
 # Expose port
 EXPOSE 8000
 
-# Set healthcheck
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# # Set healthcheck
+# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+#     CMD curl -f http://localhost:8000/health || exit 1
 
 # Start command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--reload"]

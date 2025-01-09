@@ -11,29 +11,11 @@ services:
     volumes:
       - ./storage:/app/storage
       - ./logs:/app/logs
-    environment:
-      - ENVIRONMENT=development
-      - HOST=0.0.0.0
-      - PORT=8000
-      - API_URL=http://localhost:8000
-      - GOOGLE_API_KEY=AIzaSyAqIxtRkwnfqJ3b2zLIShNf6fFylJjVJEM
-      - MONGODB_URL=mongodb+srv://raufun:1234@cluster0.mimny.mongodb.net/kothakoli?retryWrites=true&w=majority&appName=Cluster0
-      - JWT_SECRET=your_jwt_secret
-      - FRONTEND_URL=http://localhost:3000
-      - REDIS_HOST='tidy-narwhal-48465.upstash.io'
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD='Ab1RAAIjcDE0YTc3NDM3ZTRhZDg0YjhiYmI1ZGY0YmNmYzRiZjA2MHAxMA'
-      - SMTP_HOST=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_USER=raufun.ahsan@gmail.com
-      - SMTP_PASSWORD='gzci ncuu yyld jixa'
-      - ENCRYPTION_KEY=TKMBd-C4ha3tydeOdIHqK6Gzk3SZ3rOGy9AqfK8Ltd8=
-      - DATABASE_URL=${MONGODB_URL}
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 30s
+      interval: 60s
+      timeout: 60s
       retries: 3
       start_period: 5s
   frontend:
