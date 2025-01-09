@@ -3,7 +3,7 @@ from typing import Dict, List
 from ..services.auth_service import auth_service
 from ..services.email_service import email_service
 from ..middleware.auth import auth_required
-from ..middleware.role_checker import require_admin, check_roles
+from ..middleware.role_checker import require_admin
 from ..models.auth import CreateAdminRequest
 from ..api.auth import get_current_user
 import logging
@@ -18,18 +18,16 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 async def check_admin(current_user: Dict = Depends(get_current_user)) -> Dict:
     """Check if the user is an admin."""
     try:
-        async with db.get_client() as client:
-            user = await client.db.users.find_one({"_id": current_user["id"]})
-            if user["role"] != "ADMIN":
-                raise HTTPException(status_code=403, detail="Forbidden")
-            return user
+        if current_user["role"] != "ADMIN":
+            raise HTTPException(status_code=403, detail="Forbidden, you are not an admin")
+        return current_user
     except Exception as e:
         logger.error(f"Failed to check admin: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to check admin")
 
 @router.get("/users")
 async def get_all_users(
-    current_user: Dict = Depends(require_admin),
+    current_user: Dict = Depends(check_admin),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50)
 ) -> Dict:
@@ -55,11 +53,10 @@ async def get_all_users(
 async def get_all_contents(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
-    current_user: Dict = Depends(auth_required)
+    current_user: Dict = Depends(check_admin)
 ) -> Dict:
     """Get all generated contents across all users."""
     try:
-        await check_admin(current_user)
         skip = (page - 1) * limit
         contents, total = await auth_service.get_all_contents(skip=skip, limit=limit)
         return {
@@ -79,11 +76,10 @@ async def get_all_contents(
 @router.post("/create")
 async def create_admin_user(
     data: CreateAdminRequest,
-    current_user: Dict = Depends(auth_required)
+    current_user: Dict = Depends(check_admin)
 ) -> Dict:
     """Create a new admin user with a generated password."""
     try:
-        await check_admin(current_user)
         # Generate a secure random password
         password = ''.join(secrets.choice(
             string.ascii_letters + string.digits + string.punctuation

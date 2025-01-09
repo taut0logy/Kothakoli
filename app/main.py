@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from .middleware.rate_limiter import default_limiter
 import logging
 from .api import auth, chat, files, pdf, user, admin, content, search, convert, chatbot
 from .core.config import settings
@@ -60,4 +61,16 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     background_tasks = BackgroundTasks()
-    start_background_tasks(background_tasks) 
+    start_background_tasks(background_tasks)
+
+@app.middleware("http")
+async def add_rate_limit_headers(request: Request, call_next):
+    """Add rate limit headers to responses."""
+    response = await call_next(request)
+    
+    # Add rate limit headers if they exist
+    if hasattr(request.state, "rate_limit_headers"):
+        for header, value in request.state.rate_limit_headers.items():
+            response.headers[header] = value
+            
+    return response 

@@ -3,12 +3,9 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import Dict, Optional, Any
 from pydantic import BaseModel, EmailStr
 from ..services.auth_service import auth_service
-from ..services.cache_service import cache_service
 from ..core.config import settings
 import logging
-from datetime import datetime
 from ..services.email_service import email_service
-from ..core.security import get_password_hash
 from ..models.auth import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
@@ -37,19 +34,12 @@ class LoginRequest(BaseModel):
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict:
     """Get the current authenticated user."""
     try:
-        user_id = auth_service.verify_token(token)
-        if not user_id:
+        user = await auth_service.verify_token(token)
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
                 headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        user = await auth_service.get_user(user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
             )
 
         return user
@@ -246,7 +236,11 @@ async def forgot_password(request: ForgotPasswordRequest):
             )
 
         # Send reset email
-        await email_service.send_password_reset_email(email=request.email, name=result["name"], reset_token=result["token"])
+        await email_service.send_password_reset_email(
+            email=result["email"],
+            name=result["name"],
+            reset_token=result["token"]
+        )
         
         return {
             "message": "Password reset instructions have been sent to your email",

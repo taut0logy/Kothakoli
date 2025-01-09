@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Dict, List
 from ..services.auth_service import auth_service
-from ..middleware.auth import auth_required
-from ..middleware.role_checker import require_user, check_roles
+from ..api.auth import get_current_user
 import logging
 from pydantic import BaseModel
 from datetime import datetime
@@ -49,7 +48,6 @@ class ContentResponse(BaseModel):
         return cls(**data)
 
 @router.get("/search")
-@require_user
 async def search_users(
     query: str = Query(..., min_length=1),
     page: int = Query(1, ge=1),
@@ -80,7 +78,6 @@ async def search_users(
         )
 
 @router.get("/{user_id}/contents", response_model=List[ContentResponse])
-@require_user
 async def get_user_contents(
     user_id: str,
     current_user: Dict = Depends(get_current_user)
@@ -101,7 +98,7 @@ async def get_user_contents(
 
 @router.get("/profile")
 async def get_profile(
-    current_user: Dict = Depends(require_user)
+    current_user: Dict = Depends(get_current_user)
 ):
     """Get user profile."""
     return current_user 

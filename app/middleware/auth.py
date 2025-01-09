@@ -17,7 +17,7 @@ class JWTBearer(HTTPBearer):
             credentials: HTTPAuthorizationCredentials = await super().__call__(request)
             if not credentials:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid authorization code"
                 )
 
@@ -25,12 +25,12 @@ class JWTBearer(HTTPBearer):
             user = await auth_service.verify_token(credentials.credentials)
             if not user:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token or expired token"
                 )
 
             # Check if email verification is required and user is verified
-            if self.require_verified and not user["isVerified"]:
+            if self.require_verified and not user.get("isVerified"):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Email verification required"
@@ -46,7 +46,7 @@ class JWTBearer(HTTPBearer):
         except Exception as e:
             logger.error(f"Authentication error: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication failed"
             )
 

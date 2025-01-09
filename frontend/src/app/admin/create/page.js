@@ -41,10 +41,6 @@ export default function CreateAdminPage() {
     setIsLoading(true);
     try {
       await api.createAdminUser(formData);
-      toast.success('Admin user created successfully', {
-        description: 'An email has been sent with the login credentials.'
-      });
-      router.push('/admin');
     } catch (error) {
       toast.error('Failed to create admin user', {
         description: error.message

@@ -6,6 +6,7 @@ import logging
 import io
 from ..services.chat_service import chat_service
 from .auth import get_current_user
+from ..middleware.rate_limiter import default_limiter, strict_limiter
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -20,7 +21,8 @@ class TextToSpeech(BaseModel):
 @router.post("/text")
 async def chat_text(
     message: ChatMessage,
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
+    _: None = Depends(default_limiter())
 ):
     """
     Process text input and return AI response
@@ -44,7 +46,8 @@ async def chat_text(
 async def chat_voice(
     audio: UploadFile = File(...),
     model_name: Optional[str] = None,
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
+    _: None = Depends(strict_limiter())
 ):
     """
     Process voice input and return AI response

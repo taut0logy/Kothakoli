@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 import redis
 from ..core.config import settings
 
@@ -86,6 +86,41 @@ class CacheService:
             return count <= settings.RATE_LIMIT_REQUESTS
         except Exception as e:
             logger.error(f"Failed to check rate limit: {str(e)}")
+            return False
+
+    async def get_rate_limit_status(self, identifier: str, key_prefix: str = "rate_limit") -> Optional[Dict]:
+        """Get current rate limit status for an identifier."""
+        try:
+            key = f"{key_prefix}:{identifier}"
+            pipe = self.redis.pipeline()
+            pipe.get(key)
+            pipe.ttl(key)
+            count, ttl = await pipe.execute()
+            
+            if count is None:
+                return {
+                    "current": 0,
+                    "remaining": settings.RATE_LIMIT_REQUESTS,
+                    "reset_in": 0
+                }
+                
+            return {
+                "current": int(count),
+                "remaining": max(0, settings.RATE_LIMIT_REQUESTS - int(count)),
+                "reset_in": max(0, ttl)
+            }
+        except Exception as e:
+            logger.error(f"Failed to get rate limit status: {str(e)}")
+            return None
+
+    async def reset_rate_limit(self, identifier: str, key_prefix: str = "rate_limit") -> bool:
+        """Reset rate limit for an identifier."""
+        try:
+            key = f"{key_prefix}:{identifier}"
+            await self.redis.delete(key)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to reset rate limit: {str(e)}")
             return False
 
 cache_service = CacheService() 

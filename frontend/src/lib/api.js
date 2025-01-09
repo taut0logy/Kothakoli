@@ -7,9 +7,15 @@ export const api = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },
       body: JSON.stringify(data),
-    });
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to create admin user')
+    }
+    return response.json()
   },
   // Chat endpoints
   async sendMessage(message, modelName = null) {

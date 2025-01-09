@@ -12,21 +12,113 @@ class AuthService:
     def __init__(self):
         logger.info("Auth Service initialized")
 
-    def decode_token(self, token: str) -> Optional[Dict]:
-        """Decode a JWT token and return its payload."""
+    async def create_access_token(
+        self, 
+        user_id: str, 
+        type: str = "access",
+        role: str = "USER",
+        expires_delta: timedelta = None
+    ) -> str:
+        """Create a JWT access token."""
         try:
-            payload = jwt.decode(
-                token=token,
+            if expires_delta is None:
+                expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            
+            expiration = datetime.utcnow() + expires_delta
+            
+            # Create token payload
+            token_data = {
+                "sub": str(user_id),
+                "type": type,
+                "role": role,
+                "exp": int(expiration.timestamp())
+            }
+            
+            # Generate JWT
+            token = jwt.encode(
+                claims=token_data,
                 key=settings.JWT_SECRET,
-                algorithms=[settings.JWT_ALGORITHM]
+                algorithm=settings.JWT_ALGORITHM
             )
-            return payload
-        except jwt.ExpiredSignatureError:
-            logger.warning("Token has expired")
+
+            # Store in database
+            async with db.get_client() as client:
+                await client.token.create(
+                    data={
+                        "token": token,
+                        "type": type,
+                        "userId": user_id,
+                        "expiresAt": expiration,
+                        "isRevoked": False
+                    }
+                )
+
+            logger.info(f"Token created for user {user_id} with type {type} and expiration {expiration}, current time: {datetime.utcnow()}")
+
+            return token
+
+        except Exception as e:
+            logger.error(f"Failed to create access token: {str(e)}")
+            raise
+
+    async def verify_token(self, token: str) -> Optional[Dict]:
+        """Verify a token and return the user data."""
+        try:
+            # First verify JWT
+            try:
+                payload = jwt.decode(
+                    token=token,
+                    key=settings.JWT_SECRET,
+                    algorithms=[settings.JWT_ALGORITHM]
+                )
+            except jwt.ExpiredSignatureError:
+                logger.warning("Verification failed: Token has expired")
+                return None
+            except JWTError as e:
+                logger.error(f"JWT verification failed: {str(e)}")
+                return None
+
+            async with db.get_client() as client:
+                # Check if token exists in database and is valid
+                db_token = await client.token.find_first(
+                    where={
+                        "token": token,
+                        "expiresAt": {"gt": datetime.utcnow()},
+                        "isRevoked": False
+                    },
+                    include={
+                        "user": True
+                    }
+                )
+                
+                if not db_token:
+                    logger.warning("Token not found in database or expired")
+                    return None
+
+                return {
+                    "id": db_token.user.id,
+                    "email": db_token.user.email,
+                    "name": db_token.user.name,
+                    "role": db_token.user.role,
+                    "isVerified": db_token.user.isVerified
+                }
+
+        except Exception as e:
+            logger.error(f"Token verification error: {str(e)}")
             return None
-        except JWTError as e:
-            logger.error(f"JWT decoding failed: {str(e)}")
-            return None
+
+    async def cleanup_expired_tokens(self):
+        """Clean up expired tokens from database."""
+        try:
+            async with db.get_client() as client:
+                await client.token.delete_many(
+                    where={
+                        "expiresAt": {"lt": datetime.utcnow()},
+                        "isRevoked": True
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Token cleanup error: {str(e)}")
         
 
     async def create_user(self, email: str, password: str, name: str, role: str="USER") -> Dict:
@@ -72,117 +164,29 @@ class AuthService:
                 if not user or not verify_password(password, user.password):
                     return None
 
-                # Set token expiration based on remember_me
-                access_token = await self.create_access_token(user.id, user.role, expires_delta=timedelta(days=7 if remember_me else 1))
+                # Create access token
+                expires_delta = timedelta(days=7 if remember_me else 1)
+                access_token = await self.create_access_token(
+                    user_id=user.id,
+                    type="access",
+                    role=user.role,
+                    expires_delta=expires_delta
+                )
 
                 return {
                     "access_token": access_token,
                     "token_type": "bearer",
-                    "expires_at": access_token.expires_at.isoformat(),
                     "user": {
                         "id": user.id,
                         "email": user.email,
                         "name": user.name,
-                        "role": user.role,
-                        "has_api_key": bool(user.apiKey)
+                        "role": user.role
                     }
                 }
 
         except Exception as e:
             logger.error(f"Authentication error: {str(e)}")
             raise
-
-    async def create_access_token(self, user_id: str, role: str, expires_delta: timedelta = None) -> str:
-        """Create a JWT access token with role information."""
-        try:
-            if expires_delta is None:
-                expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-            
-            expiration = datetime.utcnow() + expires_delta
-            
-            # Include role in token payload
-            data = {
-                "sub": str(user_id),
-                "role": role,
-                "exp": expiration
-            }
-            
-            access_token = jwt.encode(
-                claims=data,
-                key=settings.JWT_SECRET,
-                algorithm=settings.JWT_ALGORITHM
-            )
-
-            # Store token in database
-            async with db.get_client() as client:
-                await client.token.create(
-                    data={
-                        "userId": user_id,
-                        "token": access_token,
-                        "expiresAt": expiration
-                    }
-                )
-
-            return access_token
-        except Exception as e:
-            logger.error(f"Failed to create access token: {str(e)}")
-            raise
-
-    async def verify_token(self, token: str) -> Optional[Dict]:
-        """Verify a token and return the user data."""
-        try:
-            async with db.get_client() as client:
-                # Check if token exists and is not expired
-                db_token = await client.token.find_first(
-                    where={
-                        "token": token,
-                        "expiresAt": {"gt": datetime.utcnow()}
-                    },
-                    include={
-                        "user": True
-                    }
-                )
-                
-                if not db_token:
-                    return None
-
-                # Verify JWT
-                try:
-                    payload = jwt.decode(
-                        token=token,
-                        key=settings.JWT_SECRET,
-                        algorithms=[settings.JWT_ALGORITHM]
-                    )
-                except (JWTError, jwt.ExpiredSignatureError):
-                    # Delete expired token
-                    await client.token.delete_many(
-                        where={"token": token}
-                    )
-                    return None
-
-                return {
-                    "id": db_token.user.id,
-                    "email": db_token.user.email,
-                    "name": db_token.user.name,
-                    "role": db_token.user.role,
-                    "isVerified": db_token.user.isVerified
-                }
-
-        except Exception as e:
-            logger.error(f"Token verification error: {str(e)}")
-            return None
-
-    async def cleanup_expired_tokens(self):
-        """Clean up expired tokens from database."""
-        try:
-            async with db.get_client() as client:
-                await client.token.delete_many(
-                    where={
-                        "expiresAt": {"lt": datetime.utcnow()}
-                    }
-                )
-        except Exception as e:
-            logger.error(f"Token cleanup error: {str(e)}")
 
     async def logout_user(self, token: str) -> bool:
         """Logout user by removing their token."""
@@ -281,81 +285,77 @@ class AuthService:
             raise
 
     async def create_password_reset_token(self, email: str) -> Optional[Dict]:
-        """Create a password reset token."""
+        """Create a password reset token for a user."""
         try:
             async with db.get_client() as client:
+                # Find user
                 user = await client.user.find_unique(where={"email": email})
                 if not user:
-                    raise ValueError("No account found with this email address")
+                    return None
+                
+                delta = timedelta(minutes=15)
 
-                # Create a token that expires in 15 minutes
-                expiration = datetime.utcnow() + timedelta(minutes=15)
-                token_data = {
-                    "sub": str(user.id),
-                    "email": email,
-                    "type": "password_reset",
-                    "exp": expiration
-                }
-                
-                token = jwt.encode(
-                    claims=token_data,
-                    key=settings.JWT_SECRET,
-                    algorithm=settings.JWT_ALGORITHM
+                # Create reset token with 15 minutes expiration
+                token = await self.create_access_token(
+                    user_id=user.id,
+                    type="password_reset",
+                    role=user.role,
+                    expires_delta=delta
                 )
-                
+
                 return {
                     "token": token,
-                    "email": email,
-                    "name": user.name
+                    "name": user.name,
+                    "email": user.email
                 }
+
         except Exception as e:
             logger.error(f"Failed to create password reset token: {str(e)}")
             raise
 
     async def reset_password(self, token: str, new_password: str) -> bool:
-        """Reset user's password using a valid reset token."""
+        """Reset user's password using a reset token."""
         try:
-            # Verify and decode the token
-            payload = jwt.decode(
-                token=token,
-                key=settings.JWT_SECRET,
-                algorithms=[settings.JWT_ALGORITHM]
-            )
-            
-            # Check token type and expiration
-            if payload.get("type") != "password_reset":
-                logger.warning("Invalid token type for password reset")
+            # Verify token
+            user_data = await self.verify_token(token)
+            if not user_data:
                 return False
 
-            email = payload.get("email")
-            if not email:
-                logger.warning("No email in reset token")
-                return False
-
-            # Hash the new password
-            hashed_password = get_password_hash(new_password)
-
-            # Update the password in database
             async with db.get_client() as client:
-                user = await client.user.update(
-                    where={"email": email},
+                # Verify it's a password reset token
+                db_token = await client.token.find_first(
+                    where={
+                        "token": token,
+                        "type": "password_reset",
+                        "isRevoked": False,
+                        "expiresAt": {"gt": datetime.utcnow()}
+                    }
+                )
+
+                if not db_token:
+                    return False
+
+                # Hash and update password
+                hashed_password = get_password_hash(new_password)
+                await client.user.update(
+                    where={"id": user_data["id"]},
                     data={"password": hashed_password}
                 )
-                
-                if user:
-                    logger.info(f"Password reset successful for user: {email}")
-                    return True
-                return False
 
-        except jwt.ExpiredSignatureError:
-            logger.warning("Reset token has expired")
-            return False
-        except JWTError as e:
-            logger.error(f"Invalid reset token: {str(e)}")
-            return False
+                # Revoke all tokens for this user
+                await client.token.update_many(
+                    where={
+                        "userId": user_data["id"],
+                        "isRevoked": False
+                    },
+                    data={"isRevoked": True}
+                )
+
+                return True
+
         except Exception as e:
             logger.error(f"Failed to reset password: {str(e)}")
-            raise
+            return False
 
     async def search_users(self, query: str, current_user_id: str) -> List[Dict]:
         """Search users by name."""

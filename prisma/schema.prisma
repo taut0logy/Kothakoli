@@ -42,6 +42,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   role          Role      @default(USER)
   contents      GeneratedContent[]
+  tokens        Token[]
 }
 
 model GeneratedContent {
@@ -55,19 +56,23 @@ model GeneratedContent {
   fileUrl     String?     // For PDFs, voice files, or other file types
   metadata    Json?       // Additional metadata specific to content type
   userId      String      @db.ObjectId
-  user        User        @relation(fields: [userId], references: [id])
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 }
 
 model Token {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  token       String      @unique
+  type        String      @default("access")
   userId      String      @db.ObjectId
-  user        User        @relation(fields: [userId], references: [id])
-  token       String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   expiresAt   DateTime
+  isRevoked   Boolean     @default(false)
+
+  @@index([userId])
 }
 
 
