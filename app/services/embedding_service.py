@@ -30,7 +30,7 @@ class EmbeddingService:
             self.generation_model = settings.DEFAULT_MODEL
             
             # Create storage directory if it doesn't exist
-            self.data_dir = Path(settings.STORAGE_PATH) / "data"
+            self.data_dir = Path(settings.DATA_STORAGE_PATH)
             self.data_dir.mkdir(parents=True, exist_ok=True)
             
             # Initialize cache files

@@ -122,10 +122,6 @@ class Settings(BaseSettings):
     # Update these specific settings
     API_URL: str = "http://localhost:8000"
     
-    # Storage paths
-    STORAGE_PATH: str = "storage"  # This should point to your storage directory
-    DATA_STORAGE_PATH: str = "storage/data"
-    
     class Config:
         env_file = ".env"
         case_sensitive = True

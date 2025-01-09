@@ -5,5 +5,10 @@ __pycache__/
 .vscode
 .venv/
 env/
-node_modules/
-package-lock.json
+venv/
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.env
+.env.local
