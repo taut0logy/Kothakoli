@@ -30,8 +30,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        - BACKEND_URL=http://localhost:8000
     restart: unless-stopped
     env_file:
       - ./frontend/.env
