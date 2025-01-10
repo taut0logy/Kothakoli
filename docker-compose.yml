@@ -11,6 +11,10 @@ services:
     volumes:
       - ./storage:/app/storage
       - ./logs:/app/logs
+    env_file:
+      - .env
+    networks:
+      - kothakoli-network
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -29,5 +33,12 @@ services:
       args:
         - BACKEND_URL=http://localhost:8000
     restart: unless-stopped
+    env_file:
+      - ./frontend/.env
     ports:
       - "3000:3000"
+    networks:
+      - kothakoli-network
+networks:
+  kothakoli-network:
+    driver: bridge

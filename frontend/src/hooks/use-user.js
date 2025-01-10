@@ -1,5 +1,7 @@
 import useSWR from 'swr';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 const fetcher = async (url) => {
   const token = localStorage.getItem('token');
   
@@ -35,7 +37,7 @@ const fetcher = async (url) => {
 
 export function useUser() {
   const { data: user, error, isLoading, mutate } = useSWR(
-    '/api/auth/me',
+    `${API_BASE_URL}/api/auth/me`,
     fetcher,
     {
       revalidateOnFocus: false,

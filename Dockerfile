@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     curl \
     nano \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create necessary directories with correct permissions
@@ -43,6 +44,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
+# Generate Prisma client
 RUN prisma generate
 
 # Expose port
@@ -53,4 +55,4 @@ EXPOSE 8000
 #     CMD curl -f http://localhost:8000/health || exit 1
 
 # Start command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
